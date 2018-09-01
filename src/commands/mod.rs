@@ -1,5 +1,6 @@
-mod owner;
-mod moderation;
 mod admin;
-mod voice;
+mod checks;
 mod fun;
+mod moderation;
+mod owner;
+mod voice;

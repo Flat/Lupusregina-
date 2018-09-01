@@ -4,10 +4,14 @@ version = "0.1.0"
 authors = ["Ken Swenson <flat@esoteric.moe>"]
 
 [dependencies]
+directories = "~1.0"
 env_logger = "~0.5"
 log = "~0.4"
-kankyo = "~0.2"
+kankyo = {git = "https://github.com/zeyla/kankyo"}
+rust-ini = "0.12"
+rusqlite = "0.14.0"
+typemap = "~0.3"
 
 [dependencies.serenity]
-version = "0.5"
-features = ["voice"]
+git = "https://github.com/serenity-rs/serenity"
+features = ["voice", "framework", "standard_framework"]
