@@ -1,8 +1,10 @@
 #![feature(try_trait)]
 #[macro_use]
 extern crate log;
+#[macro_use]
 extern crate serenity;
 
+extern crate chrono;
 extern crate directories;
 extern crate env_logger;
 extern crate ini;
@@ -10,38 +12,44 @@ extern crate kankyo;
 extern crate rusqlite;
 extern crate typemap;
 
+#[macro_use]
+pub mod util;
 pub mod commands;
 pub mod db;
-pub mod util;
 
+use chrono::Utc;
 use ini::Ini;
-use serenity::framework::StandardFramework;
+use serenity::framework::standard::{help_commands, HelpBehaviour, StandardFramework};
 use serenity::model::event::ResumedEvent;
 use serenity::model::gateway::Ready;
-use serenity::model::prelude::*;
 use serenity::prelude::*;
+use std::collections::HashMap;
 use std::env;
+use std::fs;
 use std::sync::Arc;
 
 struct Handler;
 
 impl EventHandler for Handler {
-    fn ready(&self, _: Context, ready: Ready) {
+    fn ready(&self, ctx: Context, ready: Ready) {
         info!("Connected as {}", ready.user.name);
-    }
-
-    fn message(&self, _: Context, msg: Message) {
-        if msg.content == "!ping" {
-            if let Err(why) = msg.channel_id.say("Pong!") {
-                error!("Error sending message: {:?}", why);
+        let mut data = ctx.data.lock();
+        match data.get_mut::<util::Uptime>() {
+            Some(uptime) => {
+                uptime.entry(String::from("boot")).or_insert_with(Utc::now);
             }
-        }
+            None => error!("Unable to insert boot time into client data."),
+        };
     }
 
     fn resume(&self, _: Context, _: ResumedEvent) {
         info!("Resumed");
     }
 }
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const BOT_NAME: &str = env!("CARGO_PKG_NAME");
+const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 
 fn main() {
     kankyo::init().expect("Failed to load .env file");
@@ -51,6 +59,21 @@ fn main() {
 
     if let Some(project_dirs) = util::get_project_dirs() {
         let config_path = project_dirs.config_dir().join("settings.ini");
+        if !config_path.exists() {
+            match fs::create_dir_all(match &config_path.parent() {
+                Some(pth) => pth,
+                None => panic!("Failed to get parent directory"),
+            }) {
+                Ok(_) => match fs::File::create(&config_path) {
+                    Ok(_) => panic!(
+                        "Settings have not been configured. {}",
+                        &config_path.to_string_lossy()
+                    ),
+                    Err(e) => panic!("Failed to create settings file: {}", e),
+                },
+                Err(e) => panic!("Failed to create settings directory: {}", e),
+            }
+        }
         if let Ok(_conf) = Ini::load_from_file(config_path) {
             conf = _conf;
         } else {
@@ -72,10 +95,7 @@ fn main() {
 
     client.with_framework(
         StandardFramework::new()
-            .on("ping", |_, msg, _| {
-                msg.channel_id.say("pong")?;
-                Ok(())
-            }).configure(|c| {
+            .configure(|c| {
                 c.dynamic_prefix(|_, msg| {
                     let default = ".".to_owned();
                     if let Some(guild_id) = msg.guild_id {
@@ -88,12 +108,27 @@ fn main() {
                         Some(default)
                     }
                 })
-            }),
+                    .on_mention(true)
+            })
+            .on_dispatch_error(|_ctx, _msg, _error| {
+
+            })
+            .customised_help(help_commands::with_embeds, |c| {
+                c.individual_command_tip("For more information about a command pass that command as an argument to help!")
+                    .command_not_found_text("Could not find: `{}`.")
+                    .lacking_permissions(HelpBehaviour::Hide)
+
+
+            })
+            .command("about", |c| c.cmd(commands::general::about))
+            .command("setprefix", |c| c.cmd(commands::admin::setprefix).check(commands::checks::admin_check).guild_only(true).desc("Sets the command prefix for this guild."))
+            .command("info", |c| c.cmd(commands::owner::info).check(commands::checks::owner_check).desc("Information about the currently running bot service and connections.")),
     );
 
     {
         let mut data = client.data.lock();
         data.insert::<util::Config>(Arc::clone(&Arc::new(conf)));
+        data.insert::<util::Uptime>(HashMap::default());
     }
 
     if let Err(why) = client.start_autosharded() {

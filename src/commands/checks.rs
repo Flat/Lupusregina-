@@ -4,7 +4,7 @@ use serenity::prelude::*;
 
 use util;
 
-fn owner_check(ctx: &mut Context, msg: &Message, _: &mut Args, _: &CommandOptions) -> bool {
+pub fn owner_check(ctx: &mut Context, msg: &Message, _: &mut Args, _: &CommandOptions) -> bool {
     if let Ok(owner) = util::get_owner(ctx) {
         msg.author.id == owner
     } else {
@@ -12,7 +12,7 @@ fn owner_check(ctx: &mut Context, msg: &Message, _: &mut Args, _: &CommandOption
     }
 }
 
-fn admin_check(_: &mut Context, msg: &Message, _: &mut Args, _: &CommandOptions) -> bool {
+pub fn admin_check(_: &mut Context, msg: &Message, _: &mut Args, _: &CommandOptions) -> bool {
     if let Some(member) = msg.member() {
         if let Ok(permissions) = member.permissions() {
             return permissions.administrator();

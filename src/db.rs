@@ -1,12 +1,22 @@
 use rusqlite::Connection;
 use serenity::model::id::GuildId;
 use std::error::Error;
+use std::fs;
 use util::get_project_dirs;
 
 pub fn create_db() {
     if let Some(project_dirs) = get_project_dirs() {
         let db = project_dirs.data_dir().join("lupus.db");
-        if let Ok(connection) = Connection::open(db) {
+        if !db.exists() {
+            match fs::create_dir_all(&db.parent().unwrap()) {
+                Ok(_) => match fs::File::create(&db) {
+                    Ok(_) => (),
+                    Err(e) => error!("Failed to create database file: {}", e),
+                },
+                Err(e) => error!("Error creating data directory: {}", e),
+            }
+        }
+        if let Ok(connection) = Connection::open(&db) {
             match connection.execute(
                 "CREATE TABLE IF NOT EXISTS Prefix (guild_id TEXT PRIMARY KEY, prefix TEXT);",
                 &[],
@@ -17,7 +27,10 @@ pub fn create_db() {
                 }
             }
         } else {
-            error!("Could not open connection to lupus.db");
+            error!(
+                "Could not open connection to lupus.db ({})",
+                &db.to_string_lossy()
+            );
         }
     } else {
         error!("Could not open project directory when creating database");
