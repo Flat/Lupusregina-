@@ -3,15 +3,16 @@ use serenity::utils::Colour;
 use serenity::CACHE;
 
 command!(about(_context, msg, _args) {
-  let cache = CACHE.read();
-  let invite_url = match cache.user.invite_url(Permissions::READ_MESSAGES | Permissions::SEND_MESSAGES | Permissions::EMBED_LINKS | Permissions::ADD_REACTIONS | Permissions::READ_MESSAGE_HISTORY | Permissions::USE_EXTERNAL_EMOJIS | Permissions::CONNECT | Permissions::USE_VAD | Permissions::CHANGE_NICKNAME) {
-      Ok(s) => s,
+  let (invite_url, face) = {
+    let cache = CACHE.read();
+    match cache.user.invite_url(Permissions::READ_MESSAGES | Permissions::SEND_MESSAGES | Permissions::EMBED_LINKS | Permissions::ADD_REACTIONS | Permissions::READ_MESSAGE_HISTORY | Permissions::USE_EXTERNAL_EMOJIS | Permissions::CONNECT | Permissions::USE_VAD | Permissions::CHANGE_NICKNAME) {
+      Ok(s) => (s, cache.user.face()),
       Err(why) => {
         println!("Failed to get invite url: {:?}", why);
         return Err(From::from(why));
       }
-    };
-  let _ = msg.channel_id.send_message(|m| m
+    }};
+  log_error!(msg.channel_id.send_message(|m| m
       .embed(|e| e
         .url(&invite_url)
         .colour(Colour::new(0xD25_148))
@@ -20,11 +21,12 @@ command!(about(_context, msg, _args) {
         .author(|mut a| {
           a = a.name(&::BOT_NAME);
           // Bot avatar URL
-          a = a.icon_url(&cache.user.face());
+          a = a.icon_url(&face);
           a
         })
         .field("Authors", &::AUTHORS, false)
         .field("Source Code", "https://github.com/flat/lupusregina-", false)
         )
-  );
+  ));
+
 });

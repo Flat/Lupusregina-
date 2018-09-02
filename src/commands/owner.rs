@@ -4,11 +4,10 @@ use serenity::CACHE;
 use util;
 
 command!(info(context, msg, _args) {
-  let cache = CACHE.read();
-
-  // Get startup time from context.data
+   // Get startup time from context.data
   let data = context.data.lock();
   let uptime = data.get::<util::Uptime>().unwrap();
+
 
   if let Some(boottime) = uptime.get("boot") {
     let now = Utc::now();
@@ -23,19 +22,24 @@ command!(info(context, msg, _args) {
     let days = hours / 24;
     hours %= 24;
 
+    let (name, face, guilds, channels) = {
+        let cache = CACHE.read();
+        (cache.user.name.to_owned(), cache.user.face(), cache.guilds.len().to_string(), cache.private_channels.len().to_string())
+    };
+
     let _ = msg.channel_id.send_message(|m| m
       .embed(|e| e
         .colour(Colour::FABLED_PINK)
         .description(&format!("I'm currently running {} - {}", &::BOT_NAME, &::VERSION))
         .title("Running Information")
         .author(|mut a| {
-          a = a.name(&cache.user.name);
-          a = a.icon_url(&cache.user.face());
+          a = a.name(&name);
+          a = a.icon_url(&face);
           a
         })
         .field("Uptime", &format!("{}d{}h{}m{}s", days, hours , minutes, seconds), false)
-        .field("Guilds", &cache.guilds.len().to_string(), false)
-        .field("Private Channels", &cache.private_channels.len().to_string(), false)
+        .field("Guilds", guilds, false)
+        .field("Private Channels", channels, false)
         )
       );
   }
