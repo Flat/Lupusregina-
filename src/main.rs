@@ -131,6 +131,7 @@ fn main() {
                         .check(commands::checks::admin_check)
                         .guild_only(true)
                         .desc("Sets the command prefix for this guild.")
+                        .min_args(1)
                 })
             }).group("Owner", |g| {
                 g.command("info", |c| {
@@ -138,7 +139,7 @@ fn main() {
                         .check(commands::checks::owner_check)
                         .desc(
                             "Information about the currently running bot service and connections.",
-                        ).min_args(1)
+                        )
                 })
             }),
     );
