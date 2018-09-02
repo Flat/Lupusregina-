@@ -1,22 +1,15 @@
-#![feature(try_trait)]
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate serenity;
-
 extern crate chrono;
 extern crate directories;
 extern crate env_logger;
 extern crate ini;
 extern crate kankyo;
+#[macro_use]
+extern crate log;
 extern crate rand;
 extern crate rusqlite;
-extern crate typemap;
-
 #[macro_use]
-pub mod util;
-pub mod commands;
-pub mod db;
+extern crate serenity;
+extern crate typemap;
 
 use chrono::Utc;
 use ini::Ini;
@@ -28,6 +21,11 @@ use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::sync::Arc;
+
+#[macro_use]
+pub mod util;
+pub mod commands;
+pub mod db;
 
 struct Handler;
 

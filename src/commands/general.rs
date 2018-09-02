@@ -1,6 +1,6 @@
+use serenity::CACHE;
 use serenity::model::permissions::Permissions;
 use serenity::utils::Colour;
-use serenity::CACHE;
 
 command!(about(_context, msg, _args) {
   let (invite_url, face) = {

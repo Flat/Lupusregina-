@@ -1,6 +1,6 @@
 use chrono::Utc;
-use serenity::utils::Colour;
 use serenity::CACHE;
+use serenity::utils::Colour;
 use util;
 
 command!(info(context, msg, _args) {
