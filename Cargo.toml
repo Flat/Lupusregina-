@@ -2,6 +2,7 @@
 name = "lupusreginaβ"
 version = "0.1.0"
 authors = ["Ken Swenson <flat@esoteric.moe>"]
+license = "Apache-2.0"
 
 [dependencies]
 chrono = "0.4.6"
