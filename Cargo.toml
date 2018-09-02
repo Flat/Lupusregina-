@@ -12,6 +12,7 @@ kankyo = {git = "https://github.com/zeyla/kankyo"}
 rust-ini = "0.12"
 rusqlite = "0.14.0"
 typemap = "~0.3"
+rand = "0.5.5"
 
 [dependencies.serenity]
 git = "https://github.com/serenity-rs/serenity"

@@ -9,6 +9,7 @@ extern crate directories;
 extern crate env_logger;
 extern crate ini;
 extern crate kankyo;
+extern crate rand;
 extern crate rusqlite;
 extern crate typemap;
 
@@ -97,6 +98,9 @@ fn main() {
         StandardFramework::new()
             .configure(|c| {
                 c.dynamic_prefix(|_, msg| {
+                    if msg.is_private() {
+                        return Some("".to_owned());
+                    }
                     let default = ".".to_owned();
                     if let Some(guild_id) = msg.guild_id {
                         if let Ok(prefix) = db::get_guild_prefix(guild_id) {
@@ -107,22 +111,36 @@ fn main() {
                     } else {
                         Some(default)
                     }
-                })
-                    .on_mention(true)
-            })
-            .on_dispatch_error(|_ctx, _msg, _error| {
-
-            })
+                }).on_mention(true)
+            }).on_dispatch_error(|_ctx, _msg, _error| {})
             .customised_help(help_commands::with_embeds, |c| {
-                c.individual_command_tip("For more information about a command pass that command as an argument to help!")
-                    .command_not_found_text("Could not find: `{}`.")
-                    .lacking_permissions(HelpBehaviour::Hide)
-
-
-            })
-            .command("about", |c| c.cmd(commands::general::about))
-            .command("setprefix", |c| c.cmd(commands::admin::setprefix).check(commands::checks::admin_check).guild_only(true).desc("Sets the command prefix for this guild."))
-            .command("info", |c| c.cmd(commands::owner::info).check(commands::checks::owner_check).desc("Information about the currently running bot service and connections.")),
+                c.lacking_permissions(HelpBehaviour::Hide)
+            }).group("Fun", |g| {
+                g.command("eightball", |c| {
+                    c.cmd(commands::fun::eightball)
+                        .desc("Ask the magic eight ball your question and receive your fortune.")
+                        .known_as("8ball")
+                        .min_args(1)
+                })
+            }).group("General", |g| {
+                g.command("about", |c| c.cmd(commands::general::about))
+                    .command("avatar", |c| c.cmd(commands::general::avatar).desc("Shows your current avatar or the avatar of the person mentioned."))
+            }).group("Admin", |g| {
+                g.command("setprefix", |c| {
+                    c.cmd(commands::admin::setprefix)
+                        .check(commands::checks::admin_check)
+                        .guild_only(true)
+                        .desc("Sets the command prefix for this guild.")
+                })
+            }).group("Owner", |g| {
+                g.command("info", |c| {
+                    c.cmd(commands::owner::info)
+                        .check(commands::checks::owner_check)
+                        .desc(
+                            "Information about the currently running bot service and connections.",
+                        ).min_args(1)
+                })
+            }),
     );
 
     {

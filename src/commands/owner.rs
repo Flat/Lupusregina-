@@ -30,7 +30,7 @@ command!(info(context, msg, _args) {
     let _ = msg.channel_id.send_message(|m| m
       .embed(|e| e
         .colour(Colour::FABLED_PINK)
-        .description(&format!("I'm currently running {} - {}", &::BOT_NAME, &::VERSION))
+        .description(&format!("Currently running {} - {}", &::BOT_NAME, &::VERSION))
         .title("Running Information")
         .author(|mut a| {
           a = a.name(&name);
