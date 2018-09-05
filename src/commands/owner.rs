@@ -1,26 +1,35 @@
 use chrono::Utc;
-use serenity::CACHE;
 use serenity::utils::Colour;
+use serenity::CACHE;
 use util;
 
 command!(info(context, msg, _args) {
-   // Get startup time from context.data
-  let data = context.data.lock();
-  let uptime = data.get::<util::Uptime>().unwrap();
 
+    let uptime = {
+        let data = context.data.lock();
+        match data.get::<util::Uptime>() {
+        Some(time) => {
+            if let Some(boottime) = time.get("boot") {
+                let now = Utc::now();
+                let duration = now.signed_duration_since(*boottime);
+                // Transform duration into days, hours, minutes, seconds.
+                // There's probably a cleaner way to do this.
+                let mut seconds = duration.num_seconds();
+                let mut minutes = seconds / 60;
+                seconds %= 60;
+                let mut hours = minutes / 60;
+                minutes %= 60;
+                let days = hours / 24;
+                hours %= 24;
+                format!("{}d{}h{}m{}s", days, hours, minutes, seconds)
+            } else {
+                "Uptime not available".to_owned()
+            }
+             },
+        None => "Uptime not available.".to_owned()
+        }
+    };
 
-  if let Some(boottime) = uptime.get("boot") {
-    let now = Utc::now();
-    let duration = now.signed_duration_since(boottime.to_owned());
-    // Transform duration into days, hours, minutes, seconds.
-    // There's probably a cleaner way to do this.
-    let mut seconds = duration.num_seconds();
-    let mut minutes = seconds / 60;
-    seconds %= 60;
-    let mut hours = minutes / 60;
-    minutes %= 60;
-    let days = hours / 24;
-    hours %= 24;
 
     let (name, face, guilds, channels) = {
         let cache = CACHE.read();
@@ -37,15 +46,10 @@ command!(info(context, msg, _args) {
           a = a.icon_url(&face);
           a
         })
-        .field("Uptime", &format!("{}d{}h{}m{}s", days, hours , minutes, seconds), false)
+        .field("Uptime", &uptime, false)
         .field("Guilds", guilds, false)
         .field("Private Channels", channels, false)
         )
       );
-  }
-  // If we can't read the context.data give up
-  else {
-    let _ = msg.channel_id.say("Unable to get startup time");
-  }
 
 });

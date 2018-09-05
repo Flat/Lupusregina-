@@ -1,6 +1,6 @@
-use serenity::CACHE;
 use serenity::model::permissions::Permissions;
 use serenity::utils::Colour;
+use serenity::CACHE;
 
 command!(about(_context, msg, _args) {
   let (invite_url, face) = {
@@ -32,13 +32,12 @@ command!(about(_context, msg, _args) {
 });
 
 command!(avatar(_context, msg, _args) {
-    let user;
-    if msg.mentions.len() == 0 {
-        user = &msg.author;
+    let user = if msg.mentions.is_empty() {
+        &msg.author
     } else {
-        user = &msg.mentions[0];
-    }
-      log_error!(msg.channel_id.send_message(|m| m
+        &msg.mentions[0]
+    };
+    log_error!(msg.channel_id.send_message(|m| m
       .embed(|e| e
         .image(user.face())
         )

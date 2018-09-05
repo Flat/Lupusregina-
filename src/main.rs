@@ -122,7 +122,11 @@ fn main() {
                 })
             }).group("General", |g| {
                 g.command("about", |c| c.cmd(commands::general::about))
-                    .command("avatar", |c| c.cmd(commands::general::avatar).desc("Shows your current avatar or the avatar of the person mentioned."))
+                    .command("avatar", |c| {
+                        c.cmd(commands::general::avatar).desc(
+                            "Shows your current avatar or the avatar of the person mentioned.",
+                        )
+                    })
             }).group("Admin", |g| {
                 g.command("setprefix", |c| {
                     c.cmd(commands::admin::setprefix)
