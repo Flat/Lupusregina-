@@ -139,11 +139,38 @@ fn main() {
             }).group("Owner", |g| {
                 g.command("info", |c| {
                     c.cmd(commands::owner::info)
-                        .check(commands::checks::owner_check)
                         .desc(
                             "Information about the currently running bot service and connections.",
-                        )
-                })
+                        ).cmd(commands::owner::reload)
+                        .desc("Reloads the settings.ini file.")
+                }).command("game", |c| {
+                    c.cmd(commands::owner::game).desc(
+                        "Sets the currently playing game name. This command takes 3 or 4 arguments:\
+                         status type name. Valid statuses are: Online, Idle, DND, Offline and Invisible.\
+                         Valid types are: Playing, Streaming, and Listening.\
+                          If the type is streaming a URL is required as well.\
+                         For example: game online playing Overlord III \
+                         \n game online streaming http://esoteric.moe Overlord III",
+                    ).min_args(3)
+                }).check(commands::checks::owner_check)
+            }).group("Presence", |g| {
+                g.prefix("presence")
+                    .command("online", |c| {
+                        c.cmd(commands::owner::online)
+                            .desc("Sets the bot's presence to online.")
+                    }).command("idle", |c| {
+                        c.cmd(commands::owner::idle)
+                            .desc("Sets the bot's presence to idle.")
+                    }).command("dnd", |c| {
+                        c.cmd(commands::owner::online)
+                            .desc("Sets the bot's presence to dnd.")
+                    }).command("invisible", |c| {
+                        c.cmd(commands::owner::online)
+                            .desc("Sets the bot's presence to invisible.")
+                    }).command("reset", |c| {
+                        c.cmd(commands::owner::online)
+                            .desc("Resets the bots presence.")
+                    }).check(commands::checks::owner_check)
             }),
     );
 

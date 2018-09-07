@@ -37,14 +37,6 @@ pub fn get_owner(ctx: &mut Context) -> Result<UserId, Box<Error>> {
     }
 }
 
-//fn reload_config() -> Result<Ini, Box<Error>> {
-//
-//    let project_dirs = get_project_dirs().ok_or("Unable to get project dirs")?;
-//    let config_path = project_dirs.config_dir().join("settings.ini")?;
-//    Ini::load_from_file(config_path)?
-//
-//}
-
 pub fn get_project_dirs() -> Option<ProjectDirs> {
     ProjectDirs::from("moe.esoteric", "flat", "Lupusreginaβ")
 }
