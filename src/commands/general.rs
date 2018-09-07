@@ -8,7 +8,7 @@ command!(about(_context, msg, _args) {
     match cache.user.invite_url(Permissions::READ_MESSAGES | Permissions::SEND_MESSAGES | Permissions::EMBED_LINKS | Permissions::ADD_REACTIONS | Permissions::READ_MESSAGE_HISTORY | Permissions::USE_EXTERNAL_EMOJIS | Permissions::CONNECT | Permissions::USE_VAD | Permissions::CHANGE_NICKNAME) {
       Ok(s) => (s, cache.user.face()),
       Err(why) => {
-        println!("Failed to get invite url: {:?}", why);
+        error!("Failed to get invite url: {:?}", why);
         return Err(From::from(why));
       }
     }};
