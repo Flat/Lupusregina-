@@ -39,7 +39,7 @@ command!(avatar(_context, msg, args) {
             let result: Result<String, Box<std::error::Error>> = try {
                 msg.guild_id.ok_or("Failed to get GuildId from Message")?
                 .to_guild_cached().ok_or("Failed to get Guild from GuildId")?
-                .read().member_named(args.full()).ok_or("Failed to find member by name")?
+                .read().members_starting_with(args.full(), false, true).first().ok_or("Could not find member")?
                 .user_id().to_user()?.face()
             };
             match result {
