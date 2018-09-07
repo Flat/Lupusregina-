@@ -1,8 +1,8 @@
+use crate::util::get_project_dirs;
 use rusqlite::Connection;
 use serenity::model::id::GuildId;
 use std::error::Error;
 use std::fs;
-use util::get_project_dirs;
 
 pub fn create_db() {
     if let Some(project_dirs) = get_project_dirs() {

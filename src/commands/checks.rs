@@ -1,7 +1,7 @@
+use crate::util;
 use serenity::framework::standard::{Args, CommandOptions};
 use serenity::model::channel::Message;
 use serenity::prelude::*;
-use util;
 
 pub fn owner_check(ctx: &mut Context, msg: &Message, _: &mut Args, _: &CommandOptions) -> bool {
     if let Ok(owner) = util::get_owner(ctx) {

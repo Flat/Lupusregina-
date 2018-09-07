@@ -1,3 +1,4 @@
+#![feature(try_blocks)]
 extern crate chrono;
 extern crate directories;
 extern crate env_logger;

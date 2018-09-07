@@ -1,7 +1,7 @@
 use chrono::Utc;
+use crate::util;
 use serenity::utils::Colour;
 use serenity::CACHE;
-use util;
 
 command!(info(context, msg, _args) {
 
@@ -39,7 +39,7 @@ command!(info(context, msg, _args) {
     let _ = msg.channel_id.send_message(|m| m
       .embed(|e| e
         .colour(Colour::FABLED_PINK)
-        .description(&format!("Currently running {} - {}", &::BOT_NAME, &::VERSION))
+        .description(&format!("Currently running {} - {}", &crate::BOT_NAME, &crate::VERSION))
         .title("Running Information")
         .author(|mut a| {
           a = a.name(&name);

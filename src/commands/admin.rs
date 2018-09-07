@@ -1,4 +1,4 @@
-use db;
+use crate::db;
 
 command!(setprefix(_context, msg, args) {
     match args.single::<String>() {

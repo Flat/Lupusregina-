@@ -17,29 +17,46 @@ command!(about(_context, msg, _args) {
         .url(&invite_url)
         .colour(Colour::new(0xD25_148))
         .description("A battle maid for the Great Tomb of Nazarick")
-        .title(&::BOT_NAME)
+        .title(&crate::BOT_NAME)
         .author(|mut a| {
-          a = a.name(&::BOT_NAME);
+          a = a.name(&crate::BOT_NAME);
           // Bot avatar URL
           a = a.icon_url(&face);
           a
         })
-        .field("Authors", &::AUTHORS, false)
+        .field("Authors", &crate::AUTHORS, false)
         .field("Source Code", "https://github.com/flat/lupusregina-", false)
         )
   ));
 
 });
 
-command!(avatar(_context, msg, _args) {
-    let user = if msg.mentions.is_empty() {
-        &msg.author
+command!(avatar(_context, msg, args) {
+    let face = if msg.mentions.is_empty() {
+        if args.is_empty() {
+            msg.author.face()
+        } else {
+            let result: Result<String, Box<std::error::Error>> = try {
+                msg.guild_id.ok_or("Failed to get GuildId from Message")?
+                .to_guild_cached().ok_or("Failed to get Guild from GuildId")?
+                .read().member_named(args.full()).ok_or("Failed to find member by name")?
+                .user_id().to_user()?.face()
+            };
+            match result {
+                Ok(face) => face,
+                Err(e) => {
+                    error!("While searching for user: {}", e);
+                    msg.author.face()
+                }
+            }
+
+        }
     } else {
-        &msg.mentions[0]
+        msg.mentions[0].face()
     };
     log_error!(msg.channel_id.send_message(|m| m
       .embed(|e| e
-        .image(user.face())
+        .image(face)
         )
   ));
 
