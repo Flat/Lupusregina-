@@ -150,7 +150,7 @@ fn main() {
                          Valid types are: Playing, Streaming, and Listening.\
                           If the type is streaming a URL is required as well.\
                          For example: game online playing Overlord III \
-                         \n game online streaming http://esoteric.moe Overlord III",
+                         \n game online streaming http://twitch.tv/ Overlord III",
                     ).min_args(3)
                 }).check(commands::checks::owner_check)
             }).group("Presence", |g| {
