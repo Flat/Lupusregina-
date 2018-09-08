@@ -141,7 +141,9 @@ fn main() {
                     c.cmd(commands::owner::info)
                         .desc(
                             "Information about the currently running bot service and connections.",
-                        ).cmd(commands::owner::reload)
+                        )
+                }).command("reload", |c| {
+                    c.cmd(commands::owner::reload)
                         .desc("Reloads the settings.ini file.")
                 }).command("game", |c| {
                     c.cmd(commands::owner::game).desc(
