@@ -147,10 +147,10 @@ fn main() {
                         .desc("Reloads the settings.ini file.")
                 }).command("game", |c| {
                     c.cmd(commands::owner::game).desc(
-                        "Sets the currently playing game name. This command takes 3 or 4 arguments:\
-                         status type name. Valid statuses are: Online, Idle, DND, Offline and Invisible.\
-                         Valid types are: Playing, Streaming, and Listening.\
-                          If the type is streaming a URL is required as well.\
+                        "Sets the currently playing game name. This command takes 3 or 4 arguments: \
+                         status type name.\nValid statuses are: Online, Idle, DND, Offline and Invisible.\
+                         \nValid types are: Playing, Streaming, and Listening.\
+                         If the type is streaming a URL is required as well. \n
                          For example: game online playing Overlord III \
                          \n game online streaming http://twitch.tv/ Overlord III",
                     ).min_args(3)
