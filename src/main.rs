@@ -164,13 +164,13 @@ fn main() {
                         c.cmd(commands::owner::idle)
                             .desc("Sets the bot's presence to idle.")
                     }).command("dnd", |c| {
-                        c.cmd(commands::owner::online)
+                        c.cmd(commands::owner::dnd)
                             .desc("Sets the bot's presence to dnd.")
                     }).command("invisible", |c| {
-                        c.cmd(commands::owner::online)
+                        c.cmd(commands::owner::invisible)
                             .desc("Sets the bot's presence to invisible.")
                     }).command("reset", |c| {
-                        c.cmd(commands::owner::online)
+                        c.cmd(commands::owner::reset)
                             .desc("Resets the bots presence.")
                     }).check(commands::checks::owner_check)
             }),
