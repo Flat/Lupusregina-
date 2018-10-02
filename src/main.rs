@@ -173,7 +173,17 @@ fn main() {
                         c.cmd(commands::owner::reset)
                             .desc("Resets the bots presence.")
                     }).check(commands::checks::owner_check)
-            }),
+            }).group("Moderation", |g| {
+            g.command("ban", |c| {
+                c.cmd(commands::moderation::ban)
+                .desc("Bans a user from the sever")
+            })
+                .command("unban", |c| {
+                    c.cmd(commands::moderation::unban)
+                        .desc("Unbans the specified user by tag: Flat#6291")
+                        .min_args(1)
+                })
+        }),
     );
 
     {
