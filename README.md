@@ -7,8 +7,13 @@ A general purpose discord bot using the [serenity](https://github.com/serenity-r
 | Admin | General | Owner | Fun | Moderation |
 | :---: | :---:  | :--: | :--: | :--: |
 | setprefix | about  | info | eightball | ban |
-| | help  | | | unban |
-| | avatar | | | |
+| | help  | ping | | unban |
+| | avatar | game  | | |
+| | | online | | |
+| | | idle | | |
+| | | dnd | | |
+| | | invisible | | |
+| | | reset | | |
 
 
 ## Building

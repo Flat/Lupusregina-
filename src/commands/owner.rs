@@ -84,6 +84,21 @@ command!(reload(context, msg, _args){
 
 });
 
+command!(ping(_context, msg, _args) {
+    let result: Result<(), Box<std::error::Error>> = try {
+        let now = Utc::now();
+        let mut msg = msg.channel_id.say("Ping!")?;
+        let finish = Utc::now();
+        let lping = ((finish.timestamp() - now.timestamp()) * 1000) + (finish.timestamp_subsec_millis() as i64  - now.timestamp_subsec_millis() as i64);
+        msg.edit(|m| m.content(&format!("{}ms", lping)))?
+    };
+    match result {
+        Ok(()) => (),
+        Err(e) => error!("{}", e)
+    };
+
+});
+
 command!(online(context, _msg, _args){
     context.online();
 });
