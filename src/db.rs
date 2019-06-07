@@ -37,7 +37,7 @@ pub fn create_db() {
     }
 }
 
-pub fn get_guild_prefix(guild_id: GuildId) -> Result<String, Box<Error>> {
+pub fn get_guild_prefix(guild_id: GuildId) -> Result<String, Box<dyn Error>> {
     let db = get_project_dirs()
         .ok_or("Could not open project directory")?
         .data_dir()
@@ -51,7 +51,7 @@ pub fn get_guild_prefix(guild_id: GuildId) -> Result<String, Box<Error>> {
     Ok(rows.next().ok_or("Guild not found.")??.get(1))
 }
 
-pub fn set_guild_prefix(guild_id: GuildId, prefix: &str) -> Result<(), Box<Error>> {
+pub fn set_guild_prefix(guild_id: GuildId, prefix: &str) -> Result<(), Box<dyn Error>> {
     let db = get_project_dirs()
         .ok_or("Could not open project directory")?
         .data_dir()

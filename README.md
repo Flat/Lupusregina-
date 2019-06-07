@@ -34,7 +34,7 @@ A general purpose discord bot using the [serenity](https://github.com/serenity-r
 lupusregina will automatically load a .env file in the current directory, BOT_TOKEN is required. RUST_LOG may also be set.
 
 ### Settings
-Currently the only thing stored in the settings file is the bot owner's userid.
+TODO
 
 ### Linux
 `~/.config/lupusreginaβ/settings.ini`

@@ -1,27 +1,36 @@
 #![feature(try_blocks)]
-extern crate chrono;
-extern crate directories;
-extern crate env_logger;
-extern crate ini;
-extern crate kankyo;
-#[macro_use]
-extern crate log;
-extern crate rand;
-extern crate rusqlite;
-#[macro_use]
-extern crate serenity;
-extern crate typemap;
-
-use chrono::Utc;
-use ini::Ini;
-use serenity::framework::standard::{help_commands, HelpBehaviour, StandardFramework};
-use serenity::model::event::ResumedEvent;
-use serenity::model::gateway::Ready;
-use serenity::prelude::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
 use std::sync::Arc;
+
+use chrono::Utc;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
+use ini::Ini;
+use serenity::framework::standard::{macros::{group, help}, StandardFramework, HelpOptions, Args, CommandGroup, CommandResult, help_commands};
+use serenity::model::event::ResumedEvent;
+use serenity::model::gateway::Ready;
+use serenity::prelude::*;
+
+use crate::commands::admin::SETPREFIX_COMMAND;
+use crate::commands::general::ABOUT_COMMAND;
+use crate::commands::general::AVATAR_COMMAND;
+use crate::commands::fun::EIGHTBALL_COMMAND;
+use crate::commands::owner::INFO_COMMAND;
+use crate::commands::owner::RELOAD_COMMAND;
+use crate::commands::owner::PING_COMMAND;
+use crate::commands::owner::ONLINE_COMMAND;
+use crate::commands::owner::IDLE_COMMAND;
+use crate::commands::owner::DND_COMMAND;
+use crate::commands::owner::INVISIBLE_COMMAND;
+use crate::commands::owner::RESET_COMMAND;
+use crate::commands::owner::GAME_COMMAND;
+use crate::commands::moderation::BAN_COMMAND;
+use crate::commands::moderation::UNBAN_COMMAND;
+use serenity::model::id::UserId;
+use serenity::model::prelude::Message;
 
 #[macro_use]
 pub mod util;
@@ -33,7 +42,7 @@ struct Handler;
 impl EventHandler for Handler {
     fn ready(&self, ctx: Context, ready: Ready) {
         info!("Connected as {}", ready.user.name);
-        let mut data = ctx.data.lock();
+        let mut data = ctx.data.write();
         match data.get_mut::<util::Uptime>() {
             Some(uptime) => {
                 uptime.entry(String::from("boot")).or_insert_with(Utc::now);
@@ -50,6 +59,58 @@ impl EventHandler for Handler {
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const BOT_NAME: &str = env!("CARGO_PKG_NAME");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
+
+group!({
+    name: "General",
+    options: {},
+    commands: [about, avatar]
+});
+
+group!({
+    name: "Fun",
+    options: {},
+    commands: [eightball]
+});
+
+group!({
+    name: "Admin",
+    options: {},
+    commands: [setprefix]
+});
+
+group!({
+    name: "Owner",
+    options: {
+        owners_only: true
+    },
+    commands: [info, reload, game, ping]
+});
+
+group!({
+   name: "Presence",
+   options: {
+        prefixes: ["presence"],
+        owners_only: true
+   },
+   commands: [online, idle, dnd, invisible, reset]
+});
+
+group!({
+    name: "Moderation",
+    commands: [ban, unban]
+});
+
+#[help]
+fn my_help(
+    context: &mut Context,
+    msg: &Message,
+    args: Args,
+    help_options: &'static HelpOptions,
+    groups: &[&'static CommandGroup],
+    owners: HashSet<UserId>
+) -> CommandResult {
+    help_commands::with_embeds(context, msg, args, help_options, groups, owners)
+}
 
 fn main() {
     kankyo::init().expect("Failed to load .env file");
@@ -93,6 +154,15 @@ fn main() {
 
     let mut client = Client::new(&token, Handler).expect("Error creating client");
 
+    let (owner, bot_id) = match client.cache_and_http.http.get_current_application_info() {
+        Ok(info) => {
+            let mut owners = HashSet::new();
+            owners.insert(info.owner.id);
+            (owners, info.id)
+        },
+        Err(why) => panic!("Could not access application information: {:?}", why),
+    };
+
     client.with_framework(
         StandardFramework::new()
             .configure(|c| {
@@ -110,84 +180,20 @@ fn main() {
                     } else {
                         Some(default)
                     }
-                }).on_mention(true)
-            }).on_dispatch_error(|_ctx, _msg, _error| {})
-            .customised_help(help_commands::with_embeds, |c| {
-                c.lacking_permissions(HelpBehaviour::Hide)
-            }).group("Fun", |g| {
-                g.command("eightball", |c| {
-                    c.cmd(commands::fun::eightball)
-                        .desc("Ask the magic eight ball your question and receive your fortune.")
-                        .known_as("8ball")
-                        .min_args(1)
-                })
-            }).group("General", |g| {
-                g.command("about", |c| c.cmd(commands::general::about))
-                    .command("avatar", |c| {
-                        c.cmd(commands::general::avatar).desc(
-                            "Shows your current avatar or the avatar of the person mentioned.",
-                        )
-                    })
-            }).group("Admin", |g| {
-                g.command("setprefix", |c| {
-                    c.cmd(commands::admin::setprefix)
-                        .check(commands::checks::admin_check)
-                        .guild_only(true)
-                        .desc("Sets the command prefix for this guild.")
-                        .min_args(1)
-                })
-            }).group("Owner", |g| {
-                g.command("info", |c| {
-                    c.cmd(commands::owner::info)
-                        .desc(
-                            "Information about the currently running bot service and connections.",
-                        )
-                }).command("reload", |c| {
-                    c.cmd(commands::owner::reload)
-                        .desc("Reloads the settings.ini file.")
-                }).command("game", |c| {
-                    c.cmd(commands::owner::game).desc(
-                        "Sets the currently playing game name. This command takes 3 or 4 arguments: \
-                         status type name.\nValid statuses are: Online, Idle, DND, Offline and Invisible.\
-                         \nValid types are: Playing, Streaming, and Listening.\
-                         If the type is streaming a URL is required as well. \n
-                         For example: game online playing Overlord III \
-                         \n game online streaming http://twitch.tv/ Overlord III",
-                    ).min_args(3)
-                }).check(commands::checks::owner_check)
-            }).group("Presence", |g| {
-                g.prefix("presence")
-                    .command("online", |c| {
-                        c.cmd(commands::owner::online)
-                            .desc("Sets the bot's presence to online.")
-                    }).command("idle", |c| {
-                        c.cmd(commands::owner::idle)
-                            .desc("Sets the bot's presence to idle.")
-                    }).command("dnd", |c| {
-                        c.cmd(commands::owner::dnd)
-                            .desc("Sets the bot's presence to dnd.")
-                    }).command("invisible", |c| {
-                        c.cmd(commands::owner::invisible)
-                            .desc("Sets the bot's presence to invisible.")
-                    }).command("reset", |c| {
-                        c.cmd(commands::owner::reset)
-                            .desc("Resets the bots presence.")
-                    }).check(commands::checks::owner_check)
-            }).group("Moderation", |g| {
-            g.command("ban", |c| {
-                c.cmd(commands::moderation::ban)
-                .desc("Bans a user from the sever")
+                }).on_mention(Some(bot_id))
+                    .owners(owner)
             })
-                .command("unban", |c| {
-                    c.cmd(commands::moderation::unban)
-                        .desc("Unbans the specified user by tag: Flat#6291")
-                        .min_args(1)
-                })
-        }),
+            .help(&MY_HELP_HELP_COMMAND)
+            .group(&GENERAL_GROUP)
+            .group(&FUN_GROUP)
+            .group(&ADMIN_GROUP)
+            .group(&OWNER_GROUP)
+            .group(&PRESENCE_GROUP)
+            .group(&MODERATION_GROUP)
     );
 
     {
-        let mut data = client.data.lock();
+        let mut data = client.data.write();
         data.insert::<util::Config>(Arc::clone(&Arc::new(conf)));
         data.insert::<util::Uptime>(HashMap::default());
     }

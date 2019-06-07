@@ -1,14 +1,22 @@
+use serenity::client::Context;
+use serenity::framework::standard::{Args, CommandResult, macros::command, CommandError};
+
+use serenity::model::channel::Message;
+
 use crate::db;
 
-command!(setprefix(_context, msg, args) {
+#[command]
+#[description = "Sets the prefix for the current Guild."]
+#[required_permissions("ADMINISTRATOR")]
+fn setprefix(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     match args.single::<String>() {
         Ok(arg) => match msg.guild_id {
             Some(guild_id) => {match db::set_guild_prefix(guild_id, &arg) {
-                Ok(_) => { log_error!(msg.channel_id.say("Set prefix!")); },
-                Err(e) => { log_error!(msg.channel_id.say(format!("Failed to set prefix: {}", e))); }
+                Ok(_) => { log_error!(msg.channel_id.say(context, "Set prefix!")); Ok(()) },
+                Err(e) => { log_error!(msg.channel_id.say(context, format!("Failed to set prefix: {}", e))); Err(CommandError(e.to_string())) }
             }},
-            None => { log_error!(msg.channel_id.say("Invalid channel")); }
+            None => { log_error!(msg.channel_id.say(context,"Invalid channel")); Err(CommandError("Invalid Channel".into())) }
         },
-        Err(e) => { log_error!(msg.channel_id.say(format!("Invalid prefix {}", e))); }
+        Err(e) => { log_error!(msg.channel_id.say(context, format!("Invalid prefix {}", e))); Err(CommandError(e.to_string())) }
     }
-});
+}

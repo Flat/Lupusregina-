@@ -1,22 +1,26 @@
-use chrono::Utc;
-use crate::util;
-use ini::Ini;
-use serenity::model::gateway::Game;
-use serenity::model::gateway::GameType;
-use serenity::model::user::OnlineStatus;
-use serenity::utils::Colour;
-use serenity::CACHE;
 use std::sync::Arc;
 
-command!(info(context, msg, _args) {
+use chrono::Utc;
+use ini::Ini;
+use serenity::framework::standard::{Args, CommandResult, macros::command};
+use serenity::model::channel::Message;
+use serenity::model::user::OnlineStatus;
+use serenity::prelude::Context;
+use serenity::utils::Colour;
+
+use crate::util;
+use serenity::model::prelude::{ActivityType, Activity};
+
+#[command]
+fn info(context: &mut Context, msg: &Message) -> CommandResult {
 
     let uptime = {
-        let data = context.data.lock();
+        let data = context.data.read();
         match data.get::<util::Uptime>() {
         Some(time) => {
             if let Some(boottime) = time.get("boot") {
                 let now = Utc::now();
-                let duration = now.signed_duration_since(*boottime);
+                let duration = now.signed_duration_since(boottime.to_owned());
                 // Transform duration into days, hours, minutes, seconds.
                 // There's probably a cleaner way to do this.
                 let mut seconds = duration.num_seconds();
@@ -37,12 +41,12 @@ command!(info(context, msg, _args) {
 
 
     let (name, face, guilds, channels) = {
-        let cache = CACHE.read();
+        let cache = context.cache.read();
         (cache.user.name.to_owned(), cache.user.face(), cache.guilds.len().to_string(),
             cache.private_channels.len().to_string())
     };
 
-    let _ = msg.channel_id.send_message(|m| m
+    log_error!(msg.channel_id.send_message(context, |m| m
       .embed(|e| e
         .colour(Colour::FABLED_PINK)
         .description(&format!("Currently running {} - {}", &crate::BOT_NAME, &crate::VERSION))
@@ -56,17 +60,19 @@ command!(info(context, msg, _args) {
         .field("Guilds", guilds, false)
         .field("Private Channels", channels, false)
         )
-      );
+      ));
+    Ok(())
 
-});
+}
 
-command!(reload(context, msg, _args){
-    let result: Result<(), Box<std::error::Error>> = try {
+#[command]
+fn reload(context: &mut Context, msg: &Message) -> CommandResult {
+    let result = try {
         let config_path =  crate::util::get_project_dirs().ok_or("Failed to get project dirs")?
             .config_dir().join("settings.ini");
         let conf = Ini::load_from_file(config_path)?;
         {
-            let mut data = context.data.lock();
+            let mut data = context.data.write();
             let data_conf = data.get_mut::<crate::util::Config>()
                 .ok_or("Failed to read config from Client Data")?;
             *data_conf = Arc::new(conf);
@@ -75,52 +81,68 @@ command!(reload(context, msg, _args){
     };
 
     match result {
-        Ok(_) => { log_error!(msg.channel_id.say("Reloaded config!")); },
+        Ok(_) => { log_error!(msg.channel_id.say(context, "Reloaded config!")); Ok(()) },
         Err(e) => {
-            error!("Failed to reload config: {}", e);
-            log_error!(msg.channel_id.say("Failed to reload config!"));
+            error!("Failed to reload config: {:?}", e);
+            log_error!(msg.channel_id.say(context, "Failed to reload config!"));
+            Err(e)
         }
     }
 
-});
+}
 
-command!(ping(_context, msg, _args) {
-    let result: Result<(), Box<std::error::Error>> = try {
+#[command]
+fn ping(context: &mut Context, msg: &Message) -> CommandResult {
+    try {
         let now = Utc::now();
-        let mut msg = msg.channel_id.say("Ping!")?;
+        let mut msg = msg.channel_id.say(&context, "Ping!")?;
         let finish = Utc::now();
         let lping = ((finish.timestamp() - now.timestamp()) * 1000) + (finish.timestamp_subsec_millis() as i64  - now.timestamp_subsec_millis() as i64);
-        msg.edit(|m| m.content(&format!("{}ms", lping)))?
-    };
-    match result {
-        Ok(()) => (),
-        Err(e) => error!("{}", e)
-    };
+        msg.edit(&context, |m| m.content(&format!("{}ms", lping)))?
+    }
 
-});
+}
 
-command!(online(context, _msg, _args){
+#[command]
+fn online(context: &mut Context, _msg: &Message) -> CommandResult {
     context.online();
-});
+    Ok(())
+}
 
-command!(idle(context, _msg, _args){
+#[command]
+fn idle(context: &mut Context, _msg: &Message) -> CommandResult {
     context.idle();
-});
+    Ok(())
+}
 
-command!(dnd(context, _msg, _args){
+#[command]
+fn dnd(context: &mut Context, _msg: &Message) -> CommandResult {
     context.dnd();
-});
+    Ok(())
+}
 
-command!(invisible(context, _msg, _args){
+#[command]
+fn invisible(context: &mut Context, _msg: &Message) -> CommandResult {
     context.invisible();
-});
+    Ok(())
+}
 
-command!(reset(context, _msg, _args){
+#[command]
+fn reset(context: &mut Context, _msg: &Message) -> CommandResult {
     context.reset_presence();
-});
+    Ok(())
+}
 
-command!(game(context, msg, args){
-    let result: Result<(), Box<std::error::Error>> = try {
+#[command]
+#[description = "Sets the currently playing game name. This command takes 3 or 4 arguments: \
+                         status type name.\nValid statuses are: Online, Idle, DND, Offline and Invisible.\
+                         \nValid types are: Playing, Streaming, and Listening.\
+                         If the type is streaming a URL is required as well. \n
+                         For example: game online playing Overlord III \
+                         \n game online streaming http://twitch.tv/ Overlord III"]
+#[min_args(3)]
+fn game(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResult {
+    try {
         let status = match args.single::<String>()?.to_ascii_uppercase().as_ref() {
             "ONLINE" => OnlineStatus::Online,
             "IDLE" => OnlineStatus::Idle,
@@ -130,27 +152,19 @@ command!(game(context, msg, args){
             _ => Err("Invalid status")?
         };
         let kind = match args.single::<String>()?.to_ascii_uppercase().as_ref() {
-            "PLAYING" => GameType::Playing,
-            "LISTENING" => GameType::Listening,
-            "STREAMING" => GameType::Streaming,
+            "PLAYING" => ActivityType::Playing,
+            "LISTENING" => ActivityType::Listening,
+            "STREAMING" => ActivityType::Streaming,
             _ => Err("Invalid type")?
         };
         match kind {
-            GameType::Playing => context.set_presence(Some(Game::playing(args.rest())), status),
-            GameType::Listening => context.set_presence(Some(Game::listening(args.rest())), status),
-            GameType::Streaming => {
+            ActivityType::Playing => context.set_presence(Some(Activity::playing(args.rest())), status),
+            ActivityType::Listening => context.set_presence(Some(Activity::listening(args.rest())), status),
+            ActivityType::Streaming => {
                 let url = args.single::<String>()?;
-                context.set_presence(Some(Game::streaming(args.rest(), &url)), status)
-            }
-        }
-        ()
-
-    };
-    match result {
-        Ok(_) => (),
-        Err(e) => {
-            error!("Error setting presence: {:?}", e);
-            log_error!(msg.channel_id.say(&format!("{}", e)));
+                context.set_presence(Some(Activity::streaming(args.rest(), &url)), status)
+            },
+            _ => ()
         }
     }
-});
+}

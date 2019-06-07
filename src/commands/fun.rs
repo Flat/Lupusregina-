@@ -1,7 +1,13 @@
 use rand::prelude::*;
+use serenity::client::Context;
+use serenity::framework::standard::{Args, CommandResult, macros::command};
+use serenity::model::channel::Message;
 use serenity::utils::Colour;
 
-command!(eightball(_context, msg, args) {
+#[command]
+#[description = "Ask the magic eight ball your question and receive your fortune."]
+#[aliases("8ball")]
+fn eightball(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
     let answers = vec!["It is certain.", "It is decidedly so.", "Without a doubt.",
          "Yes- definitely.", "You may rely on it.", "As I see it, yes", "Most likely", "Outlook good.",
          "Yes.", "Signs point to yes.", "Reply hazy, try again.", "Ask again later.",
@@ -11,7 +17,7 @@ command!(eightball(_context, msg, args) {
     let mut rng = thread_rng();
     let num = rng.gen_range(0,19);
     let choice = answers[num];
-    log_error!(msg.channel_id.send_message(|m| m
+    log_error!(msg.channel_id.send_message(context, |m| m
     .embed(|e| e
         .colour({ if num <= 9 {
             Colour::new(0x28A_745)
@@ -20,7 +26,7 @@ command!(eightball(_context, msg, args) {
         } else {
             Colour::new(0xDC3_545)
         } })
-        .description(args.full())
+        .description(args.rest())
         .author(|mut a| {
           a = a.name(&msg.author.name);
           // Bot avatar URL
@@ -29,4 +35,5 @@ command!(eightball(_context, msg, args) {
         })
         .field("🎱Eightball🎱", choice, false)
         )));
-});
+    Ok(())
+}
