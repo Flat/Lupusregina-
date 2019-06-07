@@ -1,36 +1,27 @@
 #![feature(try_blocks)]
+extern crate env_logger;
+#[macro_use]
+extern crate log;
+
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
 use std::sync::Arc;
 
 use chrono::Utc;
-#[macro_use]
-extern crate log;
-extern crate env_logger;
 use ini::Ini;
-use serenity::framework::standard::{macros::{group, help}, StandardFramework, HelpOptions, Args, CommandGroup, CommandResult, help_commands};
+use serenity::framework::standard::{
+    help_commands,
+    macros::{group, help},
+    Args, CommandGroup, CommandResult, HelpOptions, StandardFramework,
+};
 use serenity::model::event::ResumedEvent;
 use serenity::model::gateway::Ready;
-use serenity::prelude::*;
-
-use crate::commands::admin::SETPREFIX_COMMAND;
-use crate::commands::general::ABOUT_COMMAND;
-use crate::commands::general::AVATAR_COMMAND;
-use crate::commands::fun::EIGHTBALL_COMMAND;
-use crate::commands::owner::INFO_COMMAND;
-use crate::commands::owner::RELOAD_COMMAND;
-use crate::commands::owner::PING_COMMAND;
-use crate::commands::owner::ONLINE_COMMAND;
-use crate::commands::owner::IDLE_COMMAND;
-use crate::commands::owner::DND_COMMAND;
-use crate::commands::owner::INVISIBLE_COMMAND;
-use crate::commands::owner::RESET_COMMAND;
-use crate::commands::owner::GAME_COMMAND;
-use crate::commands::moderation::BAN_COMMAND;
-use crate::commands::moderation::UNBAN_COMMAND;
 use serenity::model::id::UserId;
 use serenity::model::prelude::Message;
+use serenity::prelude::*;
+
+use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*};
 
 #[macro_use]
 pub mod util;
@@ -107,7 +98,7 @@ fn my_help(
     args: Args,
     help_options: &'static HelpOptions,
     groups: &[&'static CommandGroup],
-    owners: HashSet<UserId>
+    owners: HashSet<UserId>,
 ) -> CommandResult {
     help_commands::with_embeds(context, msg, args, help_options, groups, owners)
 }
@@ -159,7 +150,7 @@ fn main() {
             let mut owners = HashSet::new();
             owners.insert(info.owner.id);
             (owners, info.id)
-        },
+        }
         Err(why) => panic!("Could not access application information: {:?}", why),
     };
 
@@ -180,8 +171,9 @@ fn main() {
                     } else {
                         Some(default)
                     }
-                }).on_mention(Some(bot_id))
-                    .owners(owner)
+                })
+                .on_mention(Some(bot_id))
+                .owners(owner)
             })
             .help(&MY_HELP_HELP_COMMAND)
             .group(&GENERAL_GROUP)
@@ -189,7 +181,7 @@ fn main() {
             .group(&ADMIN_GROUP)
             .group(&OWNER_GROUP)
             .group(&PRESENCE_GROUP)
-            .group(&MODERATION_GROUP)
+            .group(&MODERATION_GROUP),
     );
 
     {

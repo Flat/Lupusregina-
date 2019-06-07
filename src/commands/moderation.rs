@@ -1,4 +1,4 @@
-use serenity::framework::standard::{CommandResult, macros::command, Args};
+use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::channel::Message;
 use serenity::prelude::Context;
 
@@ -6,12 +6,18 @@ use serenity::prelude::Context;
 fn ban(context: &mut Context, msg: &Message) -> CommandResult {
     if !msg.mentions.is_empty() {
         try {
-                msg.guild_id.ok_or("Failed to get GuildId from Message")?
-                .to_guild_cached(&context).ok_or("Failed to get Guild from GuildId")?
-                .read().member(&context, msg.mentions[0].id)?.ban(&context, &0)?
-            }
+            msg.guild_id
+                .ok_or("Failed to get GuildId from Message")?
+                .to_guild_cached(&context)
+                .ok_or("Failed to get Guild from GuildId")?
+                .read()
+                .member(&context, msg.mentions[0].id)?
+                .ban(&context, &0)?
+        }
     } else {
-        Err(serenity::framework::standard::CommandError(String::from("No mentioned target.")))
+        Err(serenity::framework::standard::CommandError(String::from(
+            "No mentioned target.",
+        )))
     }
 }
 
@@ -19,9 +25,13 @@ fn ban(context: &mut Context, msg: &Message) -> CommandResult {
 #[min_args(1)]
 fn unban(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
     try {
-        let guild = msg.guild_id.ok_or("Failed to get GuildId from Message")?
+        let guild = msg
+            .guild_id
+            .ok_or("Failed to get GuildId from Message")?
             .to_guild_cached(&context)
-            .ok_or("Failed to get Guild from GuildId")?.read().clone();
+            .ok_or("Failed to get Guild from GuildId")?
+            .read()
+            .clone();
         let bans = guild.bans(&context)?;
 
         for banned in bans {

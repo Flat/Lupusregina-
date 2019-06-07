@@ -225,7 +225,7 @@ dependencies = [
 [[package]]
 name = "command_attr"
 version = "0.1.0-rc"
-source = "git+https://github.com/serenity-rs/serenity?branch=v0.6.x#f2ff97aed2c2640a99205ab9f947237aa2ccf01e"
+source = "git+https://github.com/serenity-rs/serenity?branch=v0.6.x#82d97c2513e547dd5275f07fe7327e0433f18860"
 dependencies = [
  "proc-macro2 0.4.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.6.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1351,7 +1351,7 @@ dependencies = [
 [[package]]
 name = "serenity"
 version = "0.6.0-rc.1"
-source = "git+https://github.com/serenity-rs/serenity?branch=v0.6.x#f2ff97aed2c2640a99205ab9f947237aa2ccf01e"
+source = "git+https://github.com/serenity-rs/serenity?branch=v0.6.x#82d97c2513e547dd5275f07fe7327e0433f18860"
 dependencies = [
  "audiopus 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "base64 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
