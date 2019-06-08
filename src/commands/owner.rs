@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use chrono::Utc;
-use ini::Ini;
 use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
 use serenity::model::channel::Message;
 use serenity::model::user::OnlineStatus;
@@ -73,11 +72,7 @@ fn info(context: &mut Context, msg: &Message) -> CommandResult {
 
 #[command]
 fn reload(context: &mut Context, msg: &Message) -> CommandResult {
-    let config_path = crate::util::get_project_dirs()
-        .ok_or("Failed to get project dirs")?
-        .config_dir()
-        .join("settings.ini");
-    let conf = Ini::load_from_file(config_path)?;
+    let conf = util::get_configuration()?;
     {
         let mut data = context.data.write();
         let data_conf = data
