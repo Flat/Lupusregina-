@@ -10,9 +10,9 @@ use std::sync::Arc;
 
 use chrono::Utc;
 use serenity::framework::standard::{
-    Args,
-    CommandGroup,
-    CommandResult, help_commands, HelpOptions, macros::{group, help}, StandardFramework,
+    help_commands,
+    macros::{group, help},
+    Args, CommandGroup, CommandResult, HelpOptions, StandardFramework,
 };
 use serenity::model::event::ResumedEvent;
 use serenity::model::gateway::Ready;
@@ -129,25 +129,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .configure(|c| {
                 c.dynamic_prefix(|_, msg| {
                     if msg.is_private() {
-                        return Some("".to_owned());
+                        return Some("".into());
                     }
-                    let default = ".".to_owned();
                     if let Some(guild_id) = msg.guild_id {
-                        if let Ok(prefix) = db::get_guild_prefix(guild_id) {
-                            Some(prefix)
-                        } else {
-                            Some(default)
-                        }
+                        let prefix =
+                            db::get_guild_prefix(guild_id).map_or_else(|_| ".".into(), |pref| pref);
+                        Some(prefix)
                     } else {
-                        Some(default)
+                        Some(".".into())
                     }
                 })
                 .on_mention(Some(bot_id))
                 .owners(owner)
             })
-            .after(|_, _, command, result| match result {
-                Ok(()) => (),
-                Err(e) => error!("{:?}: {:?}", command, e),
+            .after(|context, message, command, result| match result {
+                Ok(()) => message
+                    .react(context, '\u{2705}')
+                    .map_or_else(|_| (), |_| ()),
+                Err(e) => {
+                    error!("{:?}: {:?}", command, e);
+                    message
+                        .react(context, '\u{274C}')
+                        .map_or_else(|_| (), |_| ());
+                }
             })
             .help(&MY_HELP_HELP_COMMAND)
             .group(&GENERAL_GROUP)
