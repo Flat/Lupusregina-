@@ -153,6 +153,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .map_or_else(|_| (), |_| ());
                 }
             })
+            .on_dispatch_error(|_, message, error| {
+                error!("{} failed: {:?}", message.content, error);
+            })
             .help(&MY_HELP_HELP_COMMAND)
             .group(&GENERAL_GROUP)
             .group(&FUN_GROUP)
