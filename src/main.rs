@@ -73,7 +73,8 @@ group!({
     options: {
         owners_only: true
     },
-    commands: [info, reload, ping]
+    commands: [info, reload, ping],
+    sub_groups: [Presence]
 });
 
 group!({
