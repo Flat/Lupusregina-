@@ -9,28 +9,17 @@ use crate::db;
 #[description = "Sets the prefix for the current Guild."]
 #[required_permissions("ADMINISTRATOR")]
 fn setprefix(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
-    match args.single::<String>() {
-        Ok(arg) => match msg.guild_id {
-            Some(guild_id) => match db::set_guild_prefix(guild_id, &arg) {
-                Ok(_) => {
-                    log_error!(msg.channel_id.say(context, "Set prefix!"));
-                    Ok(())
-                }
-                Err(e) => {
-                    log_error!(msg
-                        .channel_id
-                        .say(context, format!("Failed to set prefix: {}", e)));
-                    Err(CommandError(e.to_string()))
-                }
-            },
-            None => {
-                log_error!(msg.channel_id.say(context, "Invalid channel"));
-                Err(CommandError("Invalid Channel".into()))
-            }
-        },
-        Err(e) => {
-            log_error!(msg.channel_id.say(context, format!("Invalid prefix {}", e)));
-            Err(CommandError(e.to_string()))
-        }
-    }
+    let arg = args
+        .single::<String>()
+        .map_err(|_| CommandError("Arg.single was None".into()))?;
+    let guild_id = msg
+        .guild_id
+        .ok_or_else(|| CommandError("guild_id was None".into()))?;
+    db::set_guild_prefix(guild_id, &arg)
+        .and_then(|_| {
+            msg.channel_id
+                .say(context, "Set prefix!")
+                .map_err(|e| e.into())
+        })
+        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
 }

@@ -1,4 +1,4 @@
-use serenity::framework::standard::{macros::command, Args, CommandResult};
+use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
 use serenity::model::channel::Message;
 use serenity::model::permissions::Permissions;
 use serenity::prelude::Context;
@@ -28,21 +28,26 @@ fn about(context: &mut Context, msg: &Message) -> CommandResult {
             }
         }
     };
-    log_error!(msg.channel_id.send_message(&context, |m| m.embed(|e| e
-        .url(&invite_url)
-        .colour(Colour::new(0xD25_148))
-        .description("A battle maid for the Great Tomb of Nazarick")
-        .title(&crate::BOT_NAME)
-        .author(|mut a| {
-            a = a.name(&crate::BOT_NAME);
-            // Bot avatar URL
-            a = a.icon_url(&face);
-            a
+    msg.channel_id
+        .send_message(&context, |m| {
+            m.embed(|e| {
+                e.url(&invite_url)
+                    .colour(Colour::new(0xD25_148))
+                    .description("A battle maid for the Great Tomb of Nazarick")
+                    .title(&crate::BOT_NAME)
+                    .author(|mut a| {
+                        a = a.name(&crate::BOT_NAME);
+                        // Bot avatar URL
+                        a = a.icon_url(&face);
+                        a
+                    })
+                    .field("Authors", &crate::AUTHORS, false)
+                    .field("Source Code", "https://github.com/flat/lupusregina-", false)
+            })
         })
-        .field("Authors", &crate::AUTHORS, false)
-        .field("Source Code", "https://github.com/flat/lupusregina-", false))));
-    Ok(())
+        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
 }
+
 #[command]
 #[description = "Shows the avatar for the user or specified user."]
 fn avatar(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
@@ -74,8 +79,7 @@ fn avatar(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
     } else {
         msg.mentions[0].face()
     };
-    log_error!(msg
-        .channel_id
-        .send_message(&context, |m| m.embed(|e| e.image(face))));
-    Ok(())
+    msg.channel_id
+        .send_message(&context, |m| m.embed(|e| e.image(face)))
+        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
 }

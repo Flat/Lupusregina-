@@ -24,20 +24,19 @@ fn ban(context: &mut Context, msg: &Message) -> CommandResult {
 #[command]
 #[min_args(1)]
 fn unban(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
-    try {
-        let guild = msg
-            .guild_id
-            .ok_or("Failed to get GuildId from Message")?
-            .to_guild_cached(&context)
-            .ok_or("Failed to get Guild from GuildId")?
-            .read()
-            .clone();
-        let bans = guild.bans(&context)?;
+    let guild = msg
+        .guild_id
+        .ok_or("Failed to get GuildId from Message")?
+        .to_guild_cached(&context)
+        .ok_or("Failed to get Guild from GuildId")?
+        .read()
+        .clone();
+    let bans = guild.bans(&context)?;
 
-        for banned in bans {
-            if banned.user.tag() == args.rest() {
-                guild.unban(&context, banned.user.id)?
-            }
+    for banned in bans {
+        if banned.user.tag() == args.rest() {
+            guild.unban(&context, banned.user.id)?;
         }
     }
+    Ok(())
 }

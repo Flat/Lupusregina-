@@ -1,19 +1,18 @@
 #![feature(try_blocks)]
+#![feature(result_map_or_else)]
 extern crate env_logger;
 #[macro_use]
 extern crate log;
 
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::fs;
 use std::sync::Arc;
 
 use chrono::Utc;
-use ini::Ini;
 use serenity::framework::standard::{
-    help_commands,
-    macros::{group, help},
-    Args, CommandGroup, CommandResult, HelpOptions, StandardFramework,
+    Args,
+    CommandGroup,
+    CommandResult, help_commands, HelpOptions, macros::{group, help}, StandardFramework,
 };
 use serenity::model::event::ResumedEvent;
 use serenity::model::gateway::Ready;
@@ -22,11 +21,11 @@ use serenity::model::prelude::Message;
 use serenity::prelude::*;
 
 use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*};
+use crate::util::get_configuration;
 
-#[macro_use]
-pub mod util;
 pub mod commands;
 pub mod db;
+pub mod util;
 
 struct Handler;
 
@@ -74,7 +73,7 @@ group!({
     options: {
         owners_only: true
     },
-    commands: [info, reload, game, ping]
+    commands: [info, reload, ping]
 });
 
 group!({
@@ -83,7 +82,7 @@ group!({
         prefixes: ["presence"],
         owners_only: true
    },
-   commands: [online, idle, dnd, invisible, reset]
+   commands: [online, idle, dnd, invisible, reset, set]
 });
 
 group!({
@@ -103,43 +102,14 @@ fn my_help(
     help_commands::with_embeds(context, msg, args, help_options, groups, owners)
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     kankyo::init().expect("Failed to load .env file");
+
     env_logger::init();
 
-    let conf: Ini;
-
-    if let Some(project_dirs) = util::get_project_dirs() {
-        let config_path = project_dirs.config_dir().join("settings.ini");
-        if !config_path.exists() {
-            match fs::create_dir_all(match &config_path.parent() {
-                Some(pth) => pth,
-                None => panic!("Failed to get parent directory"),
-            }) {
-                Ok(_) => match fs::File::create(&config_path) {
-                    Ok(_) => panic!(
-                        "Settings have not been configured. {}",
-                        &config_path.to_string_lossy()
-                    ),
-                    Err(e) => panic!("Failed to create settings file: {}", e),
-                },
-                Err(e) => panic!("Failed to create settings directory: {}", e),
-            }
-        }
-        if let Ok(_conf) = Ini::load_from_file(config_path) {
-            conf = _conf;
-        } else {
-            panic!(
-                "Failed to load {:?}",
-                project_dirs.config_dir().join("settings.ini")
-            )
-        };
-        project_dirs.config_dir();
-    } else {
-        panic!("Failed to get config dir!");
-    }
-
     let token = env::var("BOT_TOKEN").expect("Expected a token in the environment");
+
+    let conf = get_configuration()?;
 
     db::create_db();
 
@@ -175,6 +145,10 @@ fn main() {
                 .on_mention(Some(bot_id))
                 .owners(owner)
             })
+            .after(|_, _, command, result| match result {
+                Ok(()) => (),
+                Err(e) => error!("{:?}: {:?}", command, e),
+            })
             .help(&MY_HELP_HELP_COMMAND)
             .group(&GENERAL_GROUP)
             .group(&FUN_GROUP)
@@ -190,7 +164,5 @@ fn main() {
         data.insert::<util::Uptime>(HashMap::default());
     }
 
-    if let Err(why) = client.start_autosharded() {
-        error!("Client error: {:?}", why);
-    }
+    client.start_autosharded().map_err(|e| e.into())
 }
