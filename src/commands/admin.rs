@@ -15,7 +15,7 @@ fn setprefix(context: &mut Context, msg: &Message, mut args: Args) -> CommandRes
     let guild_id = msg
         .guild_id
         .ok_or_else(|| CommandError("guild_id was None".into()))?;
-    db::set_guild_prefix(guild_id, &arg)
+    db::set_guild_prefix(guild_id, arg)
         .and_then(|_| {
             msg.channel_id
                 .say(context, "Set prefix!")

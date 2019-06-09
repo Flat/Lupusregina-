@@ -1,6 +1,6 @@
 [package]
 name = "lupusreginaβ"
-version = "0.1.0"
+version = "0.2.3"
 authors = ["Ken Swenson <flat@esoteric.moe>"]
 license = "Apache-2.0"
 edition = "2018"
@@ -8,13 +8,13 @@ edition = "2018"
 [dependencies]
 chrono = "0.4.6"
 directories = "~1.0"
-env_logger = "~0.5"
+env_logger = "~0.6"
 log = "~0.4"
 kankyo = {git = "https://github.com/zeyla/kankyo"}
-rust-ini = "0.12"
-rusqlite = "0.14.0"
+rust-ini = "0.13"
+rusqlite = "0.18"
 typemap = "~0.3"
-rand = "0.5.5"
+rand = "0.6"
 
 [dependencies.serenity]
 git = "https://github.com/serenity-rs/serenity"

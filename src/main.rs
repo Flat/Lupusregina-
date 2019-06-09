@@ -53,7 +53,7 @@ const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 group!({
     name: "General",
     options: {},
-    commands: [about, avatar]
+    commands: [about, avatar, userinfo]
 });
 
 group!({
@@ -148,7 +148,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .react(context, '\u{2705}')
                     .map_or_else(|_| (), |_| ()),
                 Err(e) => {
-                    error!("{:?}: {:?}", command, e);
+                    error!("Command {:?} triggered by {}: {:?}", command, message.author.tag(), e);
                     message
                         .react(context, '\u{274C}')
                         .map_or_else(|_| (), |_| ());

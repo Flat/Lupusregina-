@@ -1,5 +1,5 @@
 use crate::util::get_project_dirs;
-use rusqlite::Connection;
+use rusqlite::{Connection, NO_PARAMS};
 use serenity::model::id::GuildId;
 use std::error::Error;
 use std::fs;
@@ -18,8 +18,7 @@ pub fn create_db() {
         }
         if let Ok(connection) = Connection::open(&db) {
             match connection.execute(
-                "CREATE TABLE IF NOT EXISTS Prefix (guild_id TEXT PRIMARY KEY, prefix TEXT);",
-                &[],
+                "CREATE TABLE IF NOT EXISTS Prefix (guild_id TEXT PRIMARY KEY, prefix TEXT);",NO_PARAMS,
             ) {
                 Ok(_) => {}
                 Err(e) => {
@@ -47,11 +46,11 @@ pub fn get_guild_prefix(guild_id: GuildId) -> Result<String, Box<dyn Error>> {
         "SELECT * FROM Prefix WHERE guild_id == {};",
         guild_id.as_u64()
     ))?;
-    let mut rows = statement.query(&[])?;
-    Ok(rows.next().ok_or("Guild not found.")??.get(1))
+    let mut rows = statement.query(NO_PARAMS)?;
+    Ok(rows.next()?.ok_or("Guild not found.")?.get(1)?)
 }
 
-pub fn set_guild_prefix(guild_id: GuildId, prefix: &str) -> Result<(), Box<dyn Error>> {
+pub fn set_guild_prefix(guild_id: GuildId, prefix: String) -> Result<(), Box<dyn Error>> {
     let db = get_project_dirs()
         .ok_or("Could not open project directory")?
         .data_dir()
