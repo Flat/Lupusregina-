@@ -4,6 +4,7 @@ use serenity::prelude::Context;
 
 #[command]
 #[only_in("guilds")]
+#[required_permissions("BAN_MEMBERS")]
 fn ban(context: &mut Context, msg: &Message) -> CommandResult {
     if !msg.mentions.is_empty() {
         try {
@@ -24,7 +25,7 @@ fn ban(context: &mut Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[min_args(1)]
-#[only_in("guilds")]
+#[required_permissions("BAN_MEMBERS")]
 fn unban(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
     let guild = msg
         .guild_id
