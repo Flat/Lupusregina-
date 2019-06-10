@@ -53,7 +53,7 @@ const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 group!({
     name: "General",
     options: {},
-    commands: [about, avatar, userinfo]
+    commands: [about, avatar, userinfo, guildinfo]
 });
 
 group!({

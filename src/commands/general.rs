@@ -130,3 +130,32 @@ fn userinfo(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
         })
         .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
 }
+
+#[command]
+#[description = "Shows various information about the guild."]
+#[only_in("guilds")]
+fn guildinfo(context: &mut Context, msg: &Message) -> CommandResult {
+    let guild_id = msg.guild_id.ok_or("Failed to get GuildID from Message.")?;
+    let guild = guild_id.to_guild_cached(&context).ok_or("Failed to get Guild from GuildID")?.read().clone();
+
+    msg.channel_id
+        .send_message(&context, move |m| {
+            m.embed(move |e| {
+                e.author(|a| { a.name(&guild.name);
+                if let Some(guild_icon) = &guild.icon_url() {
+                    a.icon_url(guild_icon);
+                } a})
+                    .field("Guild ID", format!("{}", guild_id), true)
+                    .field("Members", guild.member_count, true)
+                    .field("Region", &guild.region, true)
+                    .field("Features", format!("{:?}", guild.features), true)
+                    .field("Nitro Boost Level", format!("{:?}", guild.premium_tier), true)
+                    .field("Nitro Boosts", guild.premium_subscription_count, true);
+                if let Some(splash) = guild.splash_url() {
+                    e.image(splash);
+                }
+                e.footer(|f| f.text(format!("Guild created at {}", guild_id.created_at())))
+            })
+        })
+        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+}
