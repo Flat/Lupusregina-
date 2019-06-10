@@ -162,7 +162,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .group(&FUN_GROUP)
             .group(&ADMIN_GROUP)
             .group(&OWNER_GROUP)
-            .group(&PRESENCE_GROUP)
             .group(&MODERATION_GROUP),
     );
 
