@@ -88,7 +88,7 @@ group!({
 
 group!({
     name: "Moderation",
-    commands: [ban, unban]
+    commands: [ban, unban, setslowmode]
 });
 
 #[help]
@@ -148,7 +148,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .react(context, '\u{2705}')
                     .map_or_else(|_| (), |_| ()),
                 Err(e) => {
-                    error!("Command {:?} triggered by {}: {:?}", command, message.author.tag(), e);
+                    error!(
+                        "Command {:?} triggered by {}: {:?}",
+                        command,
+                        message.author.tag(),
+                        e
+                    );
                     message
                         .react(context, '\u{274C}')
                         .map_or_else(|_| (), |_| ());

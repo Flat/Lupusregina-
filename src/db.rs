@@ -18,7 +18,8 @@ pub fn create_db() {
         }
         if let Ok(connection) = Connection::open(&db) {
             match connection.execute(
-                "CREATE TABLE IF NOT EXISTS Prefix (guild_id TEXT PRIMARY KEY, prefix TEXT);",NO_PARAMS,
+                "CREATE TABLE IF NOT EXISTS Prefix (guild_id TEXT PRIMARY KEY, prefix TEXT);",
+                NO_PARAMS,
             ) {
                 Ok(_) => {}
                 Err(e) => {

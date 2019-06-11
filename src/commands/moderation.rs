@@ -1,4 +1,4 @@
-use serenity::framework::standard::{macros::command, Args, CommandResult};
+use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
 use serenity::model::channel::Message;
 use serenity::prelude::Context;
 
@@ -25,6 +25,7 @@ fn ban(context: &mut Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[min_args(1)]
+#[only_in("guilds")]
 #[required_permissions("BAN_MEMBERS")]
 fn unban(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
     let guild = msg
@@ -42,4 +43,15 @@ fn unban(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
         }
     }
     Ok(())
+}
+
+#[command]
+#[min_args(1)]
+#[only_in("guilds")]
+#[required_permissions("MANAGE_CHANNELS")]
+fn setslowmode(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+    let seconds = &args.single::<u64>()?;
+    msg.channel_id
+        .edit(context, |c| c.slow_mode_rate(*seconds))
+        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
 }
