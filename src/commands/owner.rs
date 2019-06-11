@@ -131,7 +131,7 @@ fn reset(context: &mut Context, _msg: &Message) -> CommandResult {
 #[command]
 #[description = "Sets the currently playing game name. This command takes 3 or 4 arguments: \
                  status type name.\nValid statuses are: Online, Idle, DND, Offline and Invisible.\
-                 \nValid types are: Playing, Streaming, and Listening.\
+                 Valid types are: Playing, Streaming, and Listening.\
                  If the type is streaming a URL is required as well."]
 #[usage = "<state> <activity> [<twitch url>] <status text>"]
 #[example = "online streaming https://twitch.tv/HeyZeusHeresToast Bloodborne"]

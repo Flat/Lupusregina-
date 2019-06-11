@@ -162,7 +162,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .on_dispatch_error(|_, message, error| {
                 error!("{} failed: {:?}", message.content, error);
             })
-            .help(&MY_HELP_HELP_COMMAND)
+            .help(&MY_HELP)
             .group(&GENERAL_GROUP)
             .group(&FUN_GROUP)
             .group(&ADMIN_GROUP)
