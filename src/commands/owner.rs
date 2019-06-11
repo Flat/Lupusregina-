@@ -134,7 +134,7 @@ fn reset(context: &mut Context, _msg: &Message) -> CommandResult {
                  \nValid types are: Playing, Streaming, and Listening.\
                  If the type is streaming a URL is required as well."]
 #[usage = "<state> <activity> [<twitch url>] <status text>"]
-#[example = "set online streaming https://twitch.tv/HeyZeusHeresToast Bloodborne"]
+#[example = "online streaming https://twitch.tv/HeyZeusHeresToast Bloodborne"]
 #[min_args(3)]
 fn set(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResult {
     let status = match args.single::<String>()?.to_ascii_uppercase().as_ref() {
