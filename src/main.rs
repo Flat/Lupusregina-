@@ -17,7 +17,7 @@ use serenity::framework::standard::{
 use serenity::model::event::ResumedEvent;
 use serenity::model::gateway::Ready;
 use serenity::model::id::UserId;
-use serenity::model::prelude::Message;
+use serenity::model::prelude::{Message, GuildId};
 use serenity::prelude::*;
 
 use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*};
@@ -39,6 +39,10 @@ impl EventHandler for Handler {
             }
             None => error!("Unable to insert boot time into client data."),
         };
+    }
+
+    fn cache_ready(&self, _ctx: Context, guilds: Vec<GuildId>) {
+        info!("Connected to {} guilds.", guilds.len());
     }
 
     fn resume(&self, _: Context, _: ResumedEvent) {
