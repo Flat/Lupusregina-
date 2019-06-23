@@ -18,5 +18,5 @@ rand = "0.6"
 
 [dependencies.serenity]
 git = "https://github.com/serenity-rs/serenity"
-branch = "current"
+branch = "next"
 features = ["voice", "framework", "standard_framework"]
