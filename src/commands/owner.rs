@@ -9,6 +9,8 @@ use serenity::utils::Colour;
 
 use crate::util;
 use serenity::model::prelude::{Activity, ActivityType};
+use std::fs::File;
+use std::io::copy;
 
 #[command]
 fn info(context: &mut Context, msg: &Message) -> CommandResult {
@@ -86,16 +88,106 @@ fn reload(context: &mut Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
-fn ping(context: &mut Context, msg: &Message) -> CommandResult {
-    try {
-        let now = Utc::now();
-        let mut msg = msg.channel_id.say(&context, "Ping!")?;
-        let finish = Utc::now();
-        let lping = ((finish.timestamp() - now.timestamp()) * 1000)
-            + (i64::from(finish.timestamp_subsec_millis())
-                - i64::from(now.timestamp_subsec_millis()));
-        msg.edit(&context, |m| m.content(&format!("{}ms", lping)))?
+#[description = "Changes the bot's username. YOU MAY LOSE THE DISCRIMINATOR UPON CHANGING BACK!"]
+#[usage = "\"<Username>\""]
+#[example = "\"Shalltear Bloodfallen\""]
+#[min_args(1)]
+fn rename(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResult {
+    let name = args.single_quoted::<String>()?;
+    context
+        .cache
+        .write()
+        .user
+        .edit(&context, |p| p.username(name))
+        .map_err(|e| CommandError(e.to_string()))
+}
+
+#[command]
+#[description = "Changes the bot's nickname for the current guild."]
+#[usage = "\"[<Username>]\""]
+#[example = "\"Shalltear Bloodfallen\""]
+#[only_in("guilds")]
+fn nickname(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+    if args.is_empty() {
+        if let Some(guild_id) = msg.guild_id {
+            context
+                .http
+                .edit_nickname(guild_id.0, None)
+                .map_err(|e| CommandError(e.to_string()))?
+        }
+    } else {
+        let nick = args.single_quoted::<String>()?;
+        if let Some(guild_id) = msg.guild_id {
+            context
+                .http
+                .edit_nickname(guild_id.0, Some(&nick))
+                .map_err(|e| CommandError(e.to_string()))?
+        }
     }
+
+    Ok(())
+}
+
+#[command]
+#[description = "(Un)sets the bot's avatar. Takes a url, nothing, or an attachment."]
+#[usage = "[<avatar_url>]"]
+#[example = "https://s4.anilist.co/file/anilistcdn/character/large/126870-DKc1B7cvoUu7.jpg"]
+fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+    if !msg.attachments.is_empty() {
+        let url = &msg
+            .attachments
+            .get(0)
+            .ok_or(CommandError("Failed to get attachment".to_owned()))?
+            .url;
+        let tmpdir = tempfile::tempdir()?;
+        let mut response = reqwest::get(url)?;
+        let (mut outfile, outpath) = {
+            let filename = response
+                .url()
+                .path_segments()
+                .and_then(|seg| seg.last())
+                .and_then(|name| if name.is_empty() { None } else { Some(name) })
+                .ok_or(CommandError("Failed to get filename from url.".to_owned()))?;
+            let filename = tmpdir.path().join(filename);
+            info!("{:?}", filename);
+            (File::create(filename.clone())?, filename)
+        };
+        copy(&mut response, &mut outfile)?;
+        let base64 = serenity::utils::read_image(outpath)?;
+        context
+            .cache
+            .write()
+            .user
+            .edit(&context, |p| p.avatar(Some(&base64)))?
+    } else if args.is_empty() {
+        context
+            .cache
+            .write()
+            .user
+            .edit(&context, |p| p.avatar(None))?
+    } else {
+        let url = args.single::<String>()?;
+        let tmpdir = tempfile::tempdir()?;
+        let mut response = reqwest::get(&url)?;
+        let (mut outfile, outpath) = {
+            let filename = response
+                .url()
+                .path_segments()
+                .and_then(|seg| seg.last())
+                .and_then(|name| if name.is_empty() { None } else { Some(name) })
+                .ok_or(CommandError("Failed to get filename from url.".to_owned()))?;
+            let filename = tmpdir.path().join(filename);
+            (File::create(filename.clone())?, filename)
+        };
+        copy(&mut response, &mut outfile)?;
+        let base64 = serenity::utils::read_image(outpath)?;
+        context
+            .cache
+            .write()
+            .user
+            .edit(&context, |p| p.avatar(Some(&base64)))?
+    }
+    Ok(())
 }
 
 #[command]

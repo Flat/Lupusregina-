@@ -1,3 +1,6 @@
+use crate::util::ClientShardManager;
+use chrono::Utc;
+use serenity::client::bridge::gateway::ShardId;
 use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
 use serenity::model::channel::Message;
 use serenity::model::permissions::Permissions;
@@ -169,4 +172,38 @@ fn guildinfo(context: &mut Context, msg: &Message) -> CommandResult {
             })
         })
         .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+}
+
+#[command]
+#[description = "Responds with the current latency to Discord."]
+fn ping(context: &mut Context, msg: &Message) -> CommandResult {
+    try {
+        let now = Utc::now();
+        let mut msg = msg.channel_id.say(&context, "Ping!")?;
+        let finish = Utc::now();
+        let lping = ((finish.timestamp() - now.timestamp()) * 1000)
+            + (i64::from(finish.timestamp_subsec_millis())
+                - i64::from(now.timestamp_subsec_millis()));
+        let shard_manager = context
+            .data
+            .read()
+            .get::<ClientShardManager>()
+            .ok_or(CommandError("Failed to get ClientShardManager.".to_owned()))?
+            .clone();
+        let shard_latency = shard_manager
+            .lock()
+            .runners
+            .lock()
+            .get(&ShardId(context.shard_id))
+            .ok_or(CommandError("Failed to get Shard.".to_owned()))?
+            .latency
+            .ok_or(CommandError("Failed to get latency from shard.".to_owned()))?
+            .as_millis();
+        msg.edit(&context, |m| {
+            m.content(&format!(
+                "Rest API: {}ms\nShard Latency: {}ms",
+                lping, shard_latency
+            ))
+        })?
+    }
 }

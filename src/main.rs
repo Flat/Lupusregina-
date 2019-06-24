@@ -17,7 +17,7 @@ use serenity::framework::standard::{
 use serenity::model::event::ResumedEvent;
 use serenity::model::gateway::Ready;
 use serenity::model::id::UserId;
-use serenity::model::prelude::{Message, GuildId};
+use serenity::model::prelude::{GuildId, Message};
 use serenity::prelude::*;
 
 use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*};
@@ -57,7 +57,7 @@ const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 group!({
     name: "General",
     options: {},
-    commands: [about, avatar, userinfo, guildinfo]
+    commands: [about, avatar, userinfo, guildinfo, ping]
 });
 
 group!({
@@ -77,7 +77,7 @@ group!({
     options: {
         owners_only: true
     },
-    commands: [info, reload, ping],
+    commands: [info, reload, nickname, rename, setavatar],
     sub_groups: [Presence]
 });
 
@@ -178,6 +178,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut data = client.data.write();
         data.insert::<util::Config>(Arc::clone(&Arc::new(conf)));
         data.insert::<util::Uptime>(HashMap::default());
+        data.insert::<util::ClientShardManager>(Arc::clone(&client.shard_manager));
     }
 
     client.start_autosharded().map_err(|e| e.into())
