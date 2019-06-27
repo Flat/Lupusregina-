@@ -21,4 +21,5 @@ tempfile = "3"
 [dependencies.serenity]
 git = "https://github.com/serenity-rs/serenity"
 branch = "next"
+#path = "../serenity"
 features = ["voice", "framework", "standard_framework"]

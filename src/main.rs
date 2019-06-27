@@ -108,9 +108,8 @@ fn my_help(
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    kankyo::init().expect("Failed to load .env file");
-
     env_logger::init();
+    kankyo::init().expect("Failed to load .env file");
 
     let token = env::var("BOT_TOKEN").expect("Expected a token in the environment");
 
