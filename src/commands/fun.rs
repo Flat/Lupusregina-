@@ -6,6 +6,7 @@ use serenity::utils::Colour;
 
 #[command]
 #[description = "Ask the magic eight ball your question and receive your fortune."]
+#[min_args(1)]
 #[aliases("8ball")]
 fn eightball(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
     let answers = vec![
@@ -34,7 +35,7 @@ fn eightball(context: &mut Context, msg: &Message, args: Args) -> CommandResult 
     let num = rng.gen_range(0, 19);
     let choice = answers[num];
     msg.channel_id
-        .send_message(context, |m| {
+        .send_message(&context, |m| {
             m.embed(|e| {
                 e.colour({
                     if num <= 9 {
@@ -47,8 +48,21 @@ fn eightball(context: &mut Context, msg: &Message, args: Args) -> CommandResult 
                 })
                 .description(args.rest())
                 .author(|mut a| {
-                    a = a.name(&msg.author.name);
-                    // Bot avatar URL
+                    if msg.is_private() {
+                        a = a.name(&msg.author.name);
+                    } else {
+                        if let Some(nick) = msg.guild_id.and_then(|guild_id| {
+                            context
+                                .cache
+                                .read()
+                                .member(guild_id, msg.author.id)
+                                .and_then(|member| member.nick)
+                        }) {
+                            a = a.name(nick);
+                        } else {
+                            a = a.name(&msg.author.name);
+                        }
+                    }
                     a = a.icon_url(&msg.author.face());
                     a
                 })
