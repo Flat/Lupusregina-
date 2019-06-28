@@ -133,6 +133,7 @@ fn nickname(context: &mut Context, msg: &Message, mut args: Args) -> CommandResu
 #[usage = "[<avatar_url>]"]
 #[example = "https://s4.anilist.co/file/anilistcdn/character/large/126870-DKc1B7cvoUu7.jpg"]
 fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+    let mut p = serenity::builder::EditProfile::default();
     if !msg.attachments.is_empty() {
         let url = &msg
             .attachments
@@ -149,22 +150,17 @@ fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandRes
                 .and_then(|name| if name.is_empty() { None } else { Some(name) })
                 .ok_or(CommandError("Failed to get filename from url.".to_owned()))?;
             let filename = tmpdir.path().join(filename);
-            info!("{:?}", filename);
             (File::create(filename.clone())?, filename)
         };
         copy(&mut response, &mut outfile)?;
         let base64 = serenity::utils::read_image(outpath)?;
-        context
-            .cache
-            .write()
-            .user
-            .edit(&context, |p| p.avatar(Some(&base64)))?
+        p.avatar(Some(&base64));
+        let map = serenity::utils::hashmap_to_json_map(p.0);
+        context.http.edit_profile(&map)?;
     } else if args.is_empty() {
-        context
-            .cache
-            .write()
-            .user
-            .edit(&context, |p| p.avatar(None))?
+        p.avatar(None);
+        let map = serenity::utils::hashmap_to_json_map(p.0);
+        context.http.edit_profile(&map)?;
     } else {
         let url = args.single::<String>()?;
         let tmpdir = tempfile::tempdir()?;
@@ -181,11 +177,9 @@ fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandRes
         };
         copy(&mut response, &mut outfile)?;
         let base64 = serenity::utils::read_image(outpath)?;
-        context
-            .cache
-            .write()
-            .user
-            .edit(&context, |p| p.avatar(Some(&base64)))?
+        p.avatar(Some(&base64));
+        let map = serenity::utils::hashmap_to_json_map(p.0);
+        context.http.edit_profile(&map)?;
     }
     Ok(())
 }
