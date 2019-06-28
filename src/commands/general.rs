@@ -138,7 +138,9 @@ fn userinfo(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
 #[description = "Shows various information about the guild."]
 #[only_in("guilds")]
 fn guildinfo(context: &mut Context, msg: &Message) -> CommandResult {
-    let guild_id = msg.guild_id.ok_or_else(|| "Failed to get GuildID from Message.")?;
+    let guild_id = msg
+        .guild_id
+        .ok_or_else(|| "Failed to get GuildID from Message.")?;
     let guild = guild_id
         .to_guild_cached(&context)
         .ok_or("Failed to get Guild from GuildID")?

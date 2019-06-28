@@ -39,11 +39,11 @@ fn eightball(context: &mut Context, msg: &Message, args: Args) -> CommandResult 
             m.embed(|e| {
                 e.colour({
                     if num <= 9 {
-                        Colour::new(0x28A_745)
+                        Colour::new(0x28_A7_45)
                     } else if num <= 14 {
-                        Colour::new(0xFFC_107)
+                        Colour::new(0xFF_C1_07)
                     } else {
-                        Colour::new(0xDC3_545)
+                        Colour::new(0xDC_35_45)
                     }
                 })
                 .description(args.rest())
