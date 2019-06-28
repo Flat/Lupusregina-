@@ -50,18 +50,16 @@ fn eightball(context: &mut Context, msg: &Message, args: Args) -> CommandResult 
                 .author(|mut a| {
                     if msg.is_private() {
                         a = a.name(&msg.author.name);
+                    } else if let Some(nick) = msg.guild_id.and_then(|guild_id| {
+                        context
+                            .cache
+                            .read()
+                            .member(guild_id, msg.author.id)
+                            .and_then(|member| member.nick)
+                    }) {
+                        a = a.name(nick);
                     } else {
-                        if let Some(nick) = msg.guild_id.and_then(|guild_id| {
-                            context
-                                .cache
-                                .read()
-                                .member(guild_id, msg.author.id)
-                                .and_then(|member| member.nick)
-                        }) {
-                            a = a.name(nick);
-                        } else {
-                            a = a.name(&msg.author.name);
-                        }
+                        a = a.name(&msg.author.name);
                     }
                     a = a.icon_url(&msg.author.face());
                     a
