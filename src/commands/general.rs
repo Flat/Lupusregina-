@@ -206,16 +206,16 @@ fn ping(context: &mut Context, msg: &Message) -> CommandResult {
             .data
             .read()
             .get::<ClientShardManager>()
-            .ok_or_else(|| CommandError("Failed to get ClientShardManager.".to_owned()))?
+            .ok_or_else(|| "Failed to get ClientShardManager.")?
             .clone();
         let shard_latency = shard_manager
             .lock()
             .runners
             .lock()
             .get(&ShardId(context.shard_id))
-            .ok_or_else(|| CommandError("Failed to get Shard.".to_owned()))?
+            .ok_or_else(|| "Failed to get Shard.")?
             .latency
-            .ok_or_else(|| CommandError("Failed to get latency from shard.".to_owned()))?
+            .ok_or_else(|| "Failed to get latency from shard.")?
             .as_millis();
         msg.edit(&context, |m| {
             m.content(&format!(

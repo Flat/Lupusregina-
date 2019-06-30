@@ -27,10 +27,10 @@ use crate::db;
 fn setprefix(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     let arg = args
         .single::<String>()
-        .map_err(|_| CommandError("Arg.single was None".into()))?;
+        .map_err(|_| "Arg.single was None")?;
     let guild_id = msg
         .guild_id
-        .ok_or_else(|| CommandError("guild_id was None".into()))?;
+        .ok_or_else(|| "guild_id was None")?;
     db::set_guild_prefix(guild_id, arg)
         .and_then(|_| {
             msg.channel_id

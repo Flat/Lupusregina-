@@ -154,7 +154,7 @@ fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandRes
         let url = &msg
             .attachments
             .get(0)
-            .ok_or_else(|| CommandError("Failed to get attachment".to_owned()))?
+            .ok_or_else(|| "Failed to get attachment")?
             .url;
         let tmpdir = tempfile::tempdir()?;
         let mut response = reqwest::get(url)?;
@@ -164,7 +164,7 @@ fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandRes
                 .path_segments()
                 .and_then(|seg| seg.last())
                 .and_then(|name| if name.is_empty() { None } else { Some(name) })
-                .ok_or_else(|| CommandError("Failed to get filename from url.".to_owned()))?;
+                .ok_or_else(|| "Failed to get filename from url.")?;
             let filename = tmpdir.path().join(filename);
             (File::create(filename.clone())?, filename)
         };
@@ -187,7 +187,7 @@ fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandRes
                 .path_segments()
                 .and_then(|seg| seg.last())
                 .and_then(|name| if name.is_empty() { None } else { Some(name) })
-                .ok_or_else(|| CommandError("Failed to get filename from url.".to_owned()))?;
+                .ok_or_else(|| "Failed to get filename from url.")?;
             let filename = tmpdir.path().join(filename);
             (File::create(filename.clone())?, filename)
         };

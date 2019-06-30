@@ -21,6 +21,8 @@ use serenity::model::channel::Message;
 use serenity::prelude::Context;
 use serenity::utils::Colour;
 
+use reqwest::Client as ReqwestClient;
+
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "src/anilist/schema.graphql",
@@ -36,6 +38,11 @@ struct AnimeQuery;
     response_derives = "Debug"
 )]
 struct MangaQuery;
+
+const ANILIST_ICON: &str = "https://anilist.co/img/icons/apple-touch-icon-152x152.png";
+const ANILIST_API_ENDPOINT: &str = "https://graphql.anilist.co";
+const ANILIST_MANGA_PATH: &str = "https://anilist.co/manga/";
+const ANILIST_ANIME_PATH: &str = "https://anilist.co/anime/";
 
 #[command]
 #[description = "Shows information about an anime from Anilist."]
@@ -54,11 +61,11 @@ fn anime(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
             data.page
                 .and_then(|page| page.media.and_then(|mut media| media.remove(0)))
         })
-        .ok_or_else(|| CommandError("Unable to get anime from response.".to_string()))?;
+        .ok_or_else(|| "Unable to get anime from response.")?;
     let id = anime.id;
     let title = anime
         .title
-        .ok_or_else(|| CommandError("Unable to get title field from anime.".to_string()))?;
+        .ok_or_else(|| "Unable to get title field from anime.")?;
     let cover_image = anime.cover_image.and_then(|img| img.large);
     let description = anime.description;
     let status = anime.status;
@@ -71,9 +78,9 @@ fn anime(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
         |sd| {
             format!(
                 "{:04}/{:02}/{:02}",
-                sd.year.map_or_else(|| 0, |y| y),
-                sd.month.map_or_else(|| 0, |m| m),
-                sd.day.map_or_else(|| 0, |d| d)
+                sd.year.unwrap_or(0),
+                sd.month.unwrap_or(0),
+                sd.day.unwrap_or(0)
             )
         },
     );
@@ -82,9 +89,9 @@ fn anime(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
         |ed| {
             format!(
                 "{:04}/{:02}/{:02}",
-                ed.year.map_or_else(|| 0, |y| y),
-                ed.month.map_or_else(|| 0, |m| m),
-                ed.day.map_or_else(|| 0, |d| d)
+                ed.year.unwrap_or(0),
+                ed.month.unwrap_or(0),
+                ed.day.unwrap_or(0)
             )
         },
     );
@@ -94,16 +101,11 @@ fn anime(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
             m.embed(|mut e| {
                 e = e
                     .color(Colour::BLUE)
-                    .url(format!("https://anilist.co/anime/{}", id));
-                if title.romaji.is_some() && title.native.is_some() {
-                    let title = format!("{} | {}", title.romaji.unwrap(), title.native.unwrap());
-                    e = e.title(title);
-                } else if title.romaji.is_some() && title.native.is_none() {
-                    e = e.title(title.romaji.unwrap());
-                } else if title.romaji.is_none() && title.native.is_some() {
-                    e = e.title(title.native.unwrap())
-                } else {
-                    e = e.title("Title unavailable.");
+                    .url(format!("{}{}", ANILIST_ANIME_PATH, id));
+                match (&title.romaji, &title.native) {
+                    (Some(romaji), Some(native)) => e = e.title(format!("{} | {}", romaji, native)),
+                    (Some(title), None) | (None, Some(title)) => e = e.title(title),
+                    (None, None) => e = e.title("Title unavailable."),
                 }
                 if let Some(description) = description {
                     e = e.description(format_desc(description));
@@ -142,7 +144,7 @@ fn anime(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
                 }
                 e = e.timestamp(&Utc::now()).footer(|f| {
                     f.text("Data provided by Anilist.co")
-                        .icon_url("https://anilist.co/img/icons/apple-touch-icon-152x152.png")
+                        .icon_url(ANILIST_ICON)
                 });
                 e
             })
@@ -167,11 +169,11 @@ fn manga(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
             data.page
                 .and_then(|page| page.media.and_then(|mut media| media.remove(0)))
         })
-        .ok_or_else(|| CommandError("Unable to get manga from response.".to_string()))?;
+        .ok_or_else(|| "Unable to get manga from response.")?;
     let id = manga.id;
     let title = manga
         .title
-        .ok_or_else(|| CommandError("Unable to get title field from manga.".to_string()))?;
+        .ok_or_else(|| "Unable to get title field from manga.")?;
     let cover_image = manga.cover_image.and_then(|img| img.large);
     let description = manga.description;
     let status = manga.status;
@@ -183,9 +185,9 @@ fn manga(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
         |sd| {
             format!(
                 "{:04}/{:02}/{:02}",
-                sd.year.map_or_else(|| 0, |y| y),
-                sd.month.map_or_else(|| 0, |m| m),
-                sd.day.map_or_else(|| 0, |d| d)
+                sd.year.unwrap_or(0),
+                sd.month.unwrap_or(0),
+                sd.day.unwrap_or(0)
             )
         },
     );
@@ -194,9 +196,9 @@ fn manga(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
         |ed| {
             format!(
                 "{:04}/{:02}/{:02}",
-                ed.year.map_or_else(|| 0, |y| y),
-                ed.month.map_or_else(|| 0, |m| m),
-                ed.day.map_or_else(|| 0, |d| d)
+                ed.year.unwrap_or(0),
+                ed.month.unwrap_or(0),
+                ed.day.unwrap_or(0)
             )
         },
     );
@@ -206,16 +208,11 @@ fn manga(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
             m.embed(|mut e| {
                 e = e
                     .color(Colour::BLUE)
-                    .url(format!("https://anilist.co/manga/{}", id));
-                if title.romaji.is_some() && title.native.is_some() {
-                    let title = format!("{} | {}", title.romaji.unwrap(), title.native.unwrap());
-                    e = e.title(title);
-                } else if title.romaji.is_some() && title.native.is_none() {
-                    e = e.title(title.romaji.unwrap());
-                } else if title.romaji.is_none() && title.native.is_some() {
-                    e = e.title(title.native.unwrap())
-                } else {
-                    e = e.title("Title unavailable.");
+                    .url(format!("{}{}", ANILIST_MANGA_PATH, id));
+                match (&title.romaji, &title.native) {
+                    (Some(romaji), Some(native)) => e = e.title(format!("{} | {}", romaji, native)),
+                    (Some(title), None) | (None, Some(title)) => e = e.title(title),
+                    (None, None) => e = e.title("Title unavailable."),
                 }
                 if let Some(description) = description {
                     e = e.description(format_desc(description));
@@ -251,7 +248,7 @@ fn manga(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
                 }
                 e = e.timestamp(&Utc::now()).footer(|f| {
                     f.text("Data provided by Anilist.co")
-                        .icon_url("https://anilist.co/img/icons/apple-touch-icon-152x152.png")
+                        .icon_url(ANILIST_ICON)
                 });
                 e
             })
@@ -263,26 +260,24 @@ fn anime_query(
     variables: anime_query::Variables,
 ) -> Result<Response<anime_query::ResponseData>, failure::Error> {
     let request_body = AnimeQuery::build_query(variables);
-    let client = reqwest::Client::new();
+    let client = ReqwestClient::new();
     let mut res = client
-        .post("https://graphql.anilist.co")
+        .post(ANILIST_API_ENDPOINT)
         .json(&request_body)
         .send()?;
-    let response_body: Response<anime_query::ResponseData> = res.json()?;
-    Ok(response_body)
+   res.json().map_err(From::from)
 }
 
 fn manga_query(
     variables: manga_query::Variables,
 ) -> Result<Response<manga_query::ResponseData>, failure::Error> {
     let request_body = MangaQuery::build_query(variables);
-    let client = reqwest::Client::new();
+    let client = ReqwestClient::new();
     let mut res = client
-        .post("https://graphql.anilist.co")
+        .post(ANILIST_API_ENDPOINT)
         .json(&request_body)
         .send()?;
-    let response_body: Response<manga_query::ResponseData> = res.json()?;
-    Ok(response_body)
+    res.json().map_err(From::from)
 }
 
 fn format_desc(desc: String) -> String {
