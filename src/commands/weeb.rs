@@ -287,6 +287,8 @@ fn manga_query(
 
 fn format_desc(desc: String) -> String {
     desc.replace("<br>", "\n")
+        .replace("<br/>", "\n")
+        .replace("<br />", "\n")
         .replace("<i>", "*")
         .replace("</i>", "*")
         .replace("<b>", "**")
