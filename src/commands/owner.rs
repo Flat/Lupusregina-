@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 Kenneth Swenson
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 use std::sync::Arc;
 
 use chrono::Utc;
@@ -18,9 +34,9 @@ fn info(context: &mut Context, msg: &Message) -> CommandResult {
         let data = context.data.read();
         match data.get::<util::Uptime>() {
             Some(time) => {
-                if let Some(boottime) = time.get("boot") {
+                if let Some(boot_time) = time.get("boot") {
                     let now = Utc::now();
-                    let duration = now.signed_duration_since(boottime.to_owned());
+                    let duration = now.signed_duration_since(boot_time.to_owned());
                     // Transform duration into days, hours, minutes, seconds.
                     // There's probably a cleaner way to do this.
                     let mut seconds = duration.num_seconds();
@@ -142,7 +158,7 @@ fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandRes
             .url;
         let tmpdir = tempfile::tempdir()?;
         let mut response = reqwest::get(url)?;
-        let (mut outfile, outpath) = {
+        let (mut outfile, out_path) = {
             let filename = response
                 .url()
                 .path_segments()
@@ -153,7 +169,7 @@ fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandRes
             (File::create(filename.clone())?, filename)
         };
         copy(&mut response, &mut outfile)?;
-        let base64 = serenity::utils::read_image(outpath)?;
+        let base64 = serenity::utils::read_image(out_path)?;
         p.avatar(Some(&base64));
         let map = serenity::utils::hashmap_to_json_map(p.0);
         context.http.edit_profile(&map)?;

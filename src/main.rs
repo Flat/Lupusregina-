@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 Kenneth Swenson
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 #![feature(try_blocks)]
 #![feature(result_map_or_else)]
 extern crate env_logger;
@@ -20,7 +36,7 @@ use serenity::model::id::UserId;
 use serenity::model::prelude::{GuildId, Message};
 use serenity::prelude::*;
 
-use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*};
+use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*, weeb::*};
 use crate::util::get_configuration;
 
 pub mod commands;
@@ -93,6 +109,12 @@ group!({
 group!({
     name: "Moderation",
     commands: [ban, unban, setslowmode]
+});
+
+group!({
+    name: "Weeb",
+    options: {},
+    commands: [anime, manga]
 });
 
 #[help]
@@ -170,7 +192,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .group(&FUN_GROUP)
             .group(&ADMIN_GROUP)
             .group(&OWNER_GROUP)
-            .group(&MODERATION_GROUP),
+            .group(&MODERATION_GROUP)
+            .group(&WEEB_GROUP),
     );
 
     {

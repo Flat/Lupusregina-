@@ -1,6 +1,6 @@
 [package]
 name = "lupusreginaβ"
-version = "0.2.6"
+version = "0.3.0"
 authors = ["Ken Swenson <flat@esoteric.moe>"]
 license = "Apache-2.0"
 edition = "2018"
@@ -16,7 +16,10 @@ rusqlite = "0.18"
 typemap = "~0.3"
 rand = "0.6"
 reqwest = "0.9"
+failure = "0.1"
 tempfile = "3"
+graphql_client = "0.8"
+serde = "1.0"
 
 [dependencies.serenity]
 git = "https://github.com/serenity-rs/serenity"

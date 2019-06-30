@@ -1,0 +1,28 @@
+query MangaQuery($title: String) {
+    Page (perPage: 50) {
+        media(search: $title, type: MANGA, format_not_in: [NOVEL], sort: [SEARCH_MATCH, POPULARITY_DESC]) {
+            id
+            title {
+                romaji
+                native
+            }
+            coverImage {
+                large
+            }
+            type
+            status
+            chapters
+            description
+            startDate {
+                year
+                month
+                day
+            }
+            endDate {
+                year
+                month
+                day
+            }
+        }
+    }
+}

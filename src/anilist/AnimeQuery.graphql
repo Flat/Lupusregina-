@@ -1,0 +1,28 @@
+query AnimeQuery($title: String) {
+    Page (perPage: 50) {
+        media(search: $title, type: ANIME, format_not_in: [NOVEL], sort: SEARCH_MATCH) {
+            id
+            title {
+                romaji
+                native
+            }
+            coverImage {
+                large
+            }
+            type
+            status
+            episodes
+            description
+            startDate {
+                year
+                month
+                day
+            }
+            endDate {
+                year
+                month
+                day
+            }
+        }
+    }
+}
