@@ -42,6 +42,7 @@ struct MangaQuery;
 #[usage = "<Anime Title>"]
 #[example = "Tate no Yuusha no Nariagari"]
 #[min_args(1)]
+#[bucket = "anilist"]
 fn anime(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
     let query = args.rest();
     let anime = anime_query(anime_query::Variables {
@@ -153,6 +154,7 @@ fn anime(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
 #[description = "Shows information about a manga from Anilist."]
 #[usage = "<Manga Title>"]
 #[example = "Tate no Yuusha no Nariagari"]
+#[bucket = "anilist"]
 #[min_args(1)]
 fn manga(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
     let query = args.rest();
