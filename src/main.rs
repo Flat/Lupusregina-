@@ -38,6 +38,7 @@ use serenity::prelude::*;
 
 use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*, weeb::*};
 use crate::util::get_configuration;
+use serenity::framework::standard::DispatchError::Ratelimited;
 
 pub mod commands;
 pub mod db;
@@ -184,9 +185,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .map_or_else(|_| (), |_| ());
                 }
             })
-            .on_dispatch_error(|_, message, error| {
-                error!("{} failed: {:?}", message.content, error);
+            .on_dispatch_error(|context, message, error| match error {
+                Ratelimited(e) => {
+                    error!("{} failed: {:?}", message.content, error);
+                    let _ = message.channel_id.say(
+                        &context,
+                        format!("Ratelimited: Try again in {} seconds.", e),
+                    );
+                }
+                _ => error!("{} failed: {:?}", message.content, error),
             })
+            .bucket("anilist", |b| b.time_span(60).limit(90))
             .help(&MY_HELP)
             .group(&GENERAL_GROUP)
             .group(&FUN_GROUP)

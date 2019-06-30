@@ -13,6 +13,9 @@ query AnimeQuery($title: String) {
             status
             episodes
             description
+            genres
+            averageScore
+            season
             startDate {
                 year
                 month

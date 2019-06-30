@@ -16,7 +16,7 @@
 
 use chrono::Utc;
 use graphql_client::{GraphQLQuery, Response};
-use serenity::framework::standard::{Args, CommandError, CommandResult, macros::command};
+use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
 use serenity::model::channel::Message;
 use serenity::prelude::Context;
 use serenity::utils::Colour;
@@ -62,6 +62,9 @@ fn anime(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
     let description = anime.description;
     let status = anime.status;
     let episodes = anime.episodes;
+    let genres = anime.genres;
+    let average_score = anime.average_score;
+    let season = anime.season;
     let start_date = anime.start_date.map_or_else(
         || "0000/00/00".to_string(),
         |sd| {
@@ -113,18 +116,33 @@ fn anime(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
                 if let Some(episodes) = episodes {
                     e = e.field("Episodes", episodes, true);
                 }
+                if let Some(genres) = genres {
+                    e = e.field(
+                        "Genres",
+                        genres
+                            .into_iter()
+                            .filter_map(|g| g)
+                            .collect::<Vec<String>>()
+                            .join(", "),
+                        true,
+                    );
+                }
+                if let Some(score) = average_score {
+                    e = e.field("Average Score", format!("{}%", score), true);
+                }
+                if let Some(season) = season {
+                    e = e.field("Season", format!("{:?}", season), true);
+                }
                 if start_date != "0000/00/00" {
                     e = e.field("Start Date", start_date, true);
                 }
                 if end_date != "0000/00/00" {
                     e = e.field("End Date", end_date, true)
                 }
-                e = e
-                    .timestamp(&Utc::now())
-                    .footer(|f| {
-                        f.text("Data provided by Anilist.co")
-                            .icon_url("https://anilist.co/img/icons/apple-touch-icon-152x152.png")
-                    });
+                e = e.timestamp(&Utc::now()).footer(|f| {
+                    f.text("Data provided by Anilist.co")
+                        .icon_url("https://anilist.co/img/icons/apple-touch-icon-152x152.png")
+                });
                 e
             })
         })
@@ -156,6 +174,8 @@ fn manga(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
     let description = manga.description;
     let status = manga.status;
     let chapters = manga.chapters;
+    let genres = manga.genres;
+    let average_score = manga.average_score;
     let start_date = manga.start_date.map_or_else(
         || "0000/00/00".to_string(),
         |sd| {
@@ -207,18 +227,30 @@ fn manga(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
                 if let Some(chapters) = chapters {
                     e = e.field("Chapters", chapters, true);
                 }
+                if let Some(genres) = genres {
+                    e = e.field(
+                        "Genres",
+                        genres
+                            .into_iter()
+                            .filter_map(|g| g)
+                            .collect::<Vec<String>>()
+                            .join(", "),
+                        true,
+                    );
+                }
+                if let Some(score) = average_score {
+                    e = e.field("Average Score", format!("{}%", score), true);
+                }
                 if start_date != "0000/00/00" {
                     e = e.field("Start Date", start_date, true);
                 }
                 if end_date != "0000/00/00" {
                     e = e.field("End Date", end_date, true)
                 }
-                e = e
-                    .timestamp(&Utc::now())
-                    .footer(|f| {
-                        f.text("Data provided by Anilist.co")
-                            .icon_url("https://anilist.co/img/icons/apple-touch-icon-152x152.png")
-                    });
+                e = e.timestamp(&Utc::now()).footer(|f| {
+                    f.text("Data provided by Anilist.co")
+                        .icon_url("https://anilist.co/img/icons/apple-touch-icon-152x152.png")
+                });
                 e
             })
         })
@@ -257,4 +289,6 @@ fn format_desc(desc: String) -> String {
         .replace("</i>", "*")
         .replace("<b>", "**")
         .replace("</b>", "**")
+        .replace("&rsquo;", "'")
+        .replace("&hellip;", "…")
 }

@@ -13,6 +13,8 @@ query MangaQuery($title: String) {
             status
             chapters
             description
+            genres
+            averageScore
             startDate {
                 year
                 month
