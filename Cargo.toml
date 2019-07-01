@@ -15,7 +15,6 @@ rust-ini = "0.13"
 rusqlite = "0.18"
 typemap = "~0.3"
 rand = "0.6"
-reqwest = "0.9"
 failure = "0.1"
 tempfile = "3"
 graphql_client = "0.8"
@@ -26,3 +25,8 @@ git = "https://github.com/serenity-rs/serenity"
 branch = "next"
 #path = "../serenity"
 features = ["voice", "framework", "standard_framework"]
+
+[dependencies.reqwest]
+version = "0.9"
+default-features = false
+features = ["rustls-tls"]
