@@ -142,10 +142,9 @@ fn anime(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
                 if end_date != "0000/00/00" {
                     e = e.field("End Date", end_date, true)
                 }
-                e = e.timestamp(&Utc::now()).footer(|f| {
-                    f.text("Data provided by Anilist.co")
-                        .icon_url(ANILIST_ICON)
-                });
+                e = e
+                    .timestamp(&Utc::now())
+                    .footer(|f| f.text("Data provided by Anilist.co").icon_url(ANILIST_ICON));
                 e
             })
         })
@@ -246,10 +245,9 @@ fn manga(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
                 if end_date != "0000/00/00" {
                     e = e.field("End Date", end_date, true)
                 }
-                e = e.timestamp(&Utc::now()).footer(|f| {
-                    f.text("Data provided by Anilist.co")
-                        .icon_url(ANILIST_ICON)
-                });
+                e = e
+                    .timestamp(&Utc::now())
+                    .footer(|f| f.text("Data provided by Anilist.co").icon_url(ANILIST_ICON));
                 e
             })
         })
@@ -265,7 +263,7 @@ fn anime_query(
         .post(ANILIST_API_ENDPOINT)
         .json(&request_body)
         .send()?;
-   res.json().map_err(From::from)
+    res.json().map_err(From::from)
 }
 
 fn manga_query(

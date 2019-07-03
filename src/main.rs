@@ -47,6 +47,10 @@ pub mod util;
 struct Handler;
 
 impl EventHandler for Handler {
+    fn cache_ready(&self, _ctx: Context, guilds: Vec<GuildId>) {
+        info!("Connected to {} guilds.", guilds.len());
+    }
+
     fn ready(&self, ctx: Context, ready: Ready) {
         info!("Connected as {}", ready.user.name);
         let mut data = ctx.data.write();
@@ -56,10 +60,6 @@ impl EventHandler for Handler {
             }
             None => error!("Unable to insert boot time into client data."),
         };
-    }
-
-    fn cache_ready(&self, _ctx: Context, guilds: Vec<GuildId>) {
-        info!("Connected to {} guilds.", guilds.len());
     }
 
     fn resume(&self, _: Context, _: ResumedEvent) {
@@ -80,7 +80,7 @@ group!({
 group!({
     name: "Fun",
     options: {},
-    commands: [eightball]
+    commands: [eightball, darksouls]
 });
 
 group!({

@@ -25,12 +25,8 @@ use crate::db;
 #[description = "Sets the prefix for the current Guild."]
 #[required_permissions("ADMINISTRATOR")]
 fn setprefix(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
-    let arg = args
-        .single::<String>()
-        .map_err(|_| "Arg.single was None")?;
-    let guild_id = msg
-        .guild_id
-        .ok_or_else(|| "guild_id was None")?;
+    let arg = args.single::<String>().map_err(|_| "Arg.single was None")?;
+    let guild_id = msg.guild_id.ok_or_else(|| "guild_id was None")?;
     db::set_guild_prefix(guild_id, arg)
         .and_then(|_| {
             msg.channel_id
