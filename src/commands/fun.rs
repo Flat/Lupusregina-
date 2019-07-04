@@ -21,6 +21,24 @@ use serenity::framework::standard::{macros::command, Args, CommandError, Command
 use serenity::model::channel::Message;
 use serenity::utils::Colour;
 
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref DS1FILLERS: Vec<&'static str> =
+        { include_str!("data/ds1fillers.txt").split('\n').collect() };
+    static ref DS1TEMPLATES: Vec<&'static str> =
+        { include_str!("data/ds1templates.txt").split('\n').collect() };
+    static ref DS3TEMPLATES: Vec<&'static str> =
+        { include_str!("data/ds3templates.txt").split('\n').collect() };
+    static ref DS3FILLERS: Vec<&'static str> =
+        { include_str!("data/ds3fillers.txt").split('\n').collect() };
+    static ref DS3CONJUNCTIONS: Vec<&'static str> = {
+        include_str!("data/ds3conjunctions.txt")
+            .split('\n')
+            .collect()
+    };
+}
+
 #[command]
 #[description = "Ask the magic eight ball your question and receive your fortune."]
 #[min_args(1)]
@@ -91,214 +109,54 @@ fn eightball(context: &mut Context, msg: &Message, args: Args) -> CommandResult 
 #[description = "Display a randomly generated Dark Souls message."]
 #[aliases("ds")]
 fn darksouls(context: &mut Context, msg: &Message, _args: Args) -> CommandResult {
-    let templates = vec![
-        ("{} ahead", 1),
-        ("Be wary of {}", 1),
-        ("Try {}", 1),
-        ("Need {}", 1),
-        ("Imminent {}...", 1),
-        ("Weakness: {}", 1),
-        ("{}", 1),
-        ("{}?", 1),
-        ("Good Luck", 0),
-        ("I did it!", 0),
-        ("Here!", 0),
-        ("I can't take this...", 0),
-        ("Praise the Sun!", 0),
-    ];
-    let fillers = vec![
-        "Enemy",
-        "Tough enemy",
-        "Hollow",
-        "Soldier",
-        "Knight",
-        "Sniper",
-        "Caster",
-        "Giant",
-        "Skeleton",
-        "Ghost",
-        "Bug",
-        "Poison bug",
-        "Lizard",
-        "Drake",
-        "Flier",
-        "Golem",
-        "Statue",
-        "Monster",
-        "Strange creature",
-        "Demon",
-        "Darkwraith",
-        "Dragon",
-        "Boss",
-        "Saint",
-        "Wretch",
-        "Charmer",
-        "Miscreant",
-        "Liar",
-        "Fatty",
-        "Beanpole",
-        "Merchant",
-        "Blacksmith",
-        "Master",
-        "Prisoner",
-        "Bonfire",
-        "Fog wall",
-        "Humanity",
-        "Lever",
-        "Switch",
-        "Key",
-        "Treasure",
-        "Chest",
-        "Weapon",
-        "Shield",
-        "Projectile",
-        "Armour",
-        "Item",
-        "Ring",
-        "Sorcery scroll",
-        "Pyromancy scroll",
-        "Miracle scroll",
-        "Ember",
-        "Trap",
-        "Covenant",
-        "Amazing key",
-        "Amazing treasure",
-        "Amazing chest",
-        "Amazing Weapon",
-        "Amazing shield",
-        "Amazing projectile",
-        "Amazing armour",
-        "Amazing item",
-        "Amazing ring",
-        "Amazing sorcery scroll",
-        "Amazing pyromancy scroll",
-        "Amazing miracle scroll",
-        "Amazing ember",
-        "Amazing trap",
-        "Close-ranged combat",
-        "Ranged battle",
-        "Eliminating one at a time",
-        "Luring it out",
-        "Beating to a pulp",
-        "Lying in ambush",
-        "Stealth",
-        "Mimicry",
-        "Pincer attack",
-        "Hitting them in one swoop",
-        "Fleeing",
-        "Charging",
-        "Stabbing in the back",
-        "Sweeping attack",
-        "Shield breaking",
-        "Shield breaking",
-        "Head shots",
-        "Sorcery",
-        "Pyromancy",
-        "Miracles",
-        "Jumping off",
-        "Sliding down",
-        "Dashing through",
-        "Rolling",
-        "Backstepping",
-        "Jumping",
-        "Attacking",
-        "Holding with both hands",
-        "Kicking",
-        "A plunging attack",
-        "Blocking",
-        "Parrying",
-        "Locking-on",
-        "Path",
-        "Hidden path",
-        "Shortcut",
-        "Detour",
-        "Illusionary wall",
-        "Dead end",
-        "Swamp",
-        "Lava",
-        "Forest",
-        "Cave",
-        "Labyrinth",
-        "Safe zone",
-        "Danger zone",
-        "Sniper spot",
-        "Bright spot",
-        "Dark spot",
-        "Open area",
-        "Tight spot",
-        "Hidden place",
-        "Exchange",
-        "Gorgeous view",
-        "Fall",
-        "Front",
-        "Back",
-        "Left",
-        "Right",
-        "Up",
-        "Down",
-        "Feet",
-        "Head",
-        "Back",
-        "Head",
-        "Neck",
-        "Stomach",
-        "Arm",
-        "Leg",
-        "Heel",
-        "Rear",
-        "Tail",
-        "Wings",
-        "Anywhere",
-        "Strike",
-        "Thrust",
-        "Slash",
-        "Magic",
-        "Fire",
-        "Lightning",
-        "Critical hits",
-        "Bleeding",
-        "Poison",
-        "Strong poison",
-        "Curses",
-        "Divine",
-        "Occult",
-        "Crystal",
-        "Chance",
-        "Hint",
-        "Secret",
-        "Happiness",
-        "Sorrow",
-        "Life",
-        "Death",
-        "Undead",
-        "Elation",
-        "Grief",
-        "Hope",
-        "Despair",
-        "Light",
-        "Dark",
-        "Bravery",
-        "Resignation",
-        "Comfort",
-        "Tears",
-    ];
     let mut rng = thread_rng();
-    let (template, filler_count) = templates[rng.gen_range(0, templates.len())];
-    if filler_count > 0 {
-        let mut values: Vec<&str> = Vec::new();
-        for _ in 0..filler_count {
-            values.push(fillers[rng.gen_range(0, fillers.len())])
-        }
-        let mut string_to_send = template.to_string();
-        for x in values {
-            string_to_send = string_to_send.replacen("{}", x, 1);
+    let template = DS1TEMPLATES[rng.gen_range(0, DS1TEMPLATES.len())];
+    let filler = DS1FILLERS[rng.gen_range(0, DS1FILLERS.len())];
+    let message = template.replace("{}", filler);
+    msg.channel_id
+        .say(&context, message)
+        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+}
+
+#[command]
+#[description = "Display a randomly generated Dark Souls 3 message."]
+#[aliases("ds3")]
+fn darksouls3(context: &mut Context, msg: &Message, _args: Args) -> CommandResult {
+    let mut rng = thread_rng();
+    let has_conjunction = rng.gen_range(0, 2);
+    if has_conjunction == 1 {
+        let conjunction = DS3CONJUNCTIONS[rng.gen_range(0, DS3CONJUNCTIONS.len())];
+        let mut message: String = String::new();
+        for x in 0..2 {
+            if x == 0 {
+                message.push_str(
+                    &DS3TEMPLATES[rng.gen_range(0, DS3TEMPLATES.len())]
+                        .replace("{}", DS3FILLERS[rng.gen_range(0, DS3FILLERS.len())]),
+                );
+                if conjunction != "," {
+                    message.push(' ');
+                    message.push_str(conjunction);
+                    message.push(' ');
+                } else {
+                    message.push_str(conjunction);
+                    message.push(' ');
+                }
+            } else {
+                message.push_str(
+                    &DS3TEMPLATES[rng.gen_range(0, DS3TEMPLATES.len())]
+                        .replace("{}", DS3FILLERS[rng.gen_range(0, DS3FILLERS.len())]),
+                );
+            }
         }
         msg.channel_id
-            .say(&context, string_to_send)
+            .say(&context, message)
             .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
     } else {
+        let template = DS3TEMPLATES[rng.gen_range(0, DS3TEMPLATES.len())];
+        let filler = DS3FILLERS[rng.gen_range(0, DS3FILLERS.len())];
+        let message = template.replace("{}", filler);
         msg.channel_id
-            .say(&context, template)
+            .say(&context, message)
             .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
     }
 }
