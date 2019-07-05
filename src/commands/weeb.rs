@@ -109,6 +109,8 @@ fn anime(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
                 }
                 if let Some(description) = description {
                     e = e.description(format_desc(description));
+                } else {
+                    e = e.description("No description available.");
                 }
                 if let Some(cover_image) = cover_image {
                     e = e.thumbnail(cover_image);
@@ -215,6 +217,8 @@ fn manga(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
                 }
                 if let Some(description) = description {
                     e = e.description(format_desc(description));
+                } else {
+                    e = e.description("No description available.");
                 }
                 if let Some(cover_image) = cover_image {
                     e = e.thumbnail(cover_image);
