@@ -131,16 +131,16 @@ fn my_help(
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    kankyo::load(true)?;
     env_logger::init();
-    kankyo::init().expect("Failed to load .env file");
 
-    let token = env::var("BOT_TOKEN").expect("Expected a token in the environment");
+    let token = env::var("BOT_TOKEN")?;
 
     let conf = get_configuration()?;
 
     db::create_db();
 
-    let mut client = Client::new(&token, Handler).expect("Error creating client");
+    let mut client = Client::new(&token, Handler)?;
 
     let (owner, bot_id) = match client.cache_and_http.http.get_current_application_info() {
         Ok(info) => {
