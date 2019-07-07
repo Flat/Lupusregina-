@@ -14,6 +14,9 @@
  *    limitations under the License.
  */
 
+use core::fmt;
+
+use chrono::{Date, Datelike, Local};
 use rand::prelude::*;
 use rand::Rng;
 use serenity::client::Context;
@@ -37,6 +40,71 @@ lazy_static! {
             .split('\n')
             .collect()
     };
+    static ref DDAYS: Vec<&'static str> = vec![
+        "Sweetmorn",
+        "Boomtime",
+        "Pungenday",
+        "Prickle-Prickle",
+        "Setting Orange",
+    ];
+    static ref DSEASONS: Vec<&'static str> = vec![
+        "Chaos",
+        "Discord",
+        "Confusion",
+        "Bureaucracy",
+        "The Aftermath",
+    ];
+}
+
+struct Dday {
+    season: u32,
+    day: u32,
+    year: i32,
+    tibs_day: bool,
+}
+
+impl From<Date<Local>> for Dday {
+    fn from(date: Date<Local>) -> Self {
+        let year = date.year() + 1166;
+        let mut day_of_year = date.ordinal();
+        let mut season = 0;
+        let mut tibs_day = false;
+        if year % 4 == 2 {
+            if day_of_year == 59 {
+                tibs_day = true
+            } else if day_of_year > 59 {
+                day_of_year -= 1
+            }
+        };
+        while day_of_year >= 73 {
+            season += 1;
+            day_of_year -= 73;
+        }
+        Dday {
+            year,
+            season,
+            day: day_of_year,
+            tibs_day,
+        }
+    }
+}
+
+impl fmt::Display for Dday {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.tibs_day {
+            write!(f, "Today is St. Tib's Day in the YOLD {}", self.year)
+        } else {
+            write!(
+                f,
+                "Today is {}, the {}{} day of {} in the YOLD {}",
+                DDAYS[(self.day % 5) as usize],
+                self.day,
+                parse_int_ordinal_suffix(self.day),
+                DSEASONS[self.season as usize],
+                self.year
+            )
+        }
+    }
 }
 
 #[command]
@@ -158,5 +226,30 @@ fn darksouls3(context: &mut Context, msg: &Message, _args: Args) -> CommandResul
         msg.channel_id
             .say(&context, message)
             .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+    }
+}
+
+#[command]
+#[description = "Display the current date of the Discordian/Erisian Calendar"]
+#[aliases("dd")]
+fn ddate(context: &mut Context, msg: &Message, _args: Args) -> CommandResult {
+    let today = Local::today();
+    let message = Dday::from(today);
+    msg.channel_id
+        .say(&context, message)
+        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+}
+
+fn parse_int_ordinal_suffix(num: u32) -> &'static str {
+    if num / 10 == 1 {
+        "th"
+    } else if num % 10 == 1 {
+        "st"
+    } else if num % 10 == 2 {
+        "nd"
+    } else if num % 10 == 3 {
+        "rd"
+    } else {
+        "th"
     }
 }

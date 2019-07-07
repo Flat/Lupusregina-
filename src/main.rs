@@ -80,7 +80,7 @@ group!({
 group!({
     name: "Fun",
     options: {},
-    commands: [eightball, darksouls, darksouls3]
+    commands: [eightball, darksouls, darksouls3, ddate]
 });
 
 group!({
