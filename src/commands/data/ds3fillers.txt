@@ -89,7 +89,7 @@ shield
 projectile
 armor
 item
-ting
+thing
 ore
 coal
 transposing kiln
