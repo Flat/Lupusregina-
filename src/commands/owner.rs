@@ -55,13 +55,14 @@ fn info(context: &mut Context, msg: &Message) -> CommandResult {
         }
     };
 
-    let (name, face, guilds, channels) = {
+    let (name, face, guilds, channels, users) = {
         let cache = context.cache.read();
         (
             cache.user.name.to_owned(),
             cache.user.face(),
             cache.guilds.len().to_string(),
             cache.private_channels.len().to_string(),
+            cache.users.len()
         )
     };
 
@@ -83,6 +84,7 @@ fn info(context: &mut Context, msg: &Message) -> CommandResult {
                     .field("Uptime", &uptime, false)
                     .field("Guilds", guilds, false)
                     .field("Private Channels", channels, false)
+                    .field("Users", users, false)
             })
         })
         .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
