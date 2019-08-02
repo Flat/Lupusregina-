@@ -1,6 +1,6 @@
 [package]
 name = "lupusreginaβ"
-version = "0.3.3"
+version = "0.3.4"
 authors = ["Ken Swenson <flat@esoteric.moe>"]
 license = "Apache-2.0"
 edition = "2018"
