@@ -71,52 +71,38 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const BOT_NAME: &str = env!("CARGO_PKG_NAME");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 
-group!({
-    name: "General",
-    options: {},
-    commands: [about, avatar, userinfo, guildinfo, ping]
-});
+#[group]
+#[commands(about, avatar, userinfo, guildinfo, ping)]
+struct General;
 
-group!({
-    name: "Fun",
-    options: {},
-    commands: [eightball, darksouls, darksouls3, ddate]
-});
+#[group]
+#[commands(eightball, darksouls, darksouls3, ddate)]
+struct Fun;
 
-group!({
-    name: "Admin",
-    options: {},
-    commands: [setprefix]
-});
+#[group]
+#[commands(setprefix)]
+struct Admin;
 
-group!({
-    name: "Owner",
-    options: {
-        owners_only: true
-    },
-    commands: [info, reload, nickname, rename, setavatar],
-    sub_groups: [Presence]
-});
+#[group]
+#[owners_only]
+#[owner_privilege]
+#[commands(info, reload, nickname, rename, setavatar)]
+#[sub_groups(Presence)]
+struct Owner;
 
-group!({
-   name: "Presence",
-   options: {
-        prefixes: ["presence"],
-        owners_only: true
-   },
-   commands: [online, idle, dnd, invisible, reset, set]
-});
+#[group]
+#[prefix("presence")]
+#[owners_only]
+#[commands(online, idle, dnd, invisible, reset, set)]
+struct Presence;
 
-group!({
-    name: "Moderation",
-    commands: [ban, unban, setslowmode]
-});
+#[group]
+#[commands(ban, unban, setslowmode)]
+struct Moderation;
 
-group!({
-    name: "Weeb",
-    options: {},
-    commands: [anime, manga]
-});
+#[group]
+#[commands(anime, manga)]
+struct Weeb;
 
 #[help]
 fn my_help(
