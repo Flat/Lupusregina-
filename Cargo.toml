@@ -1,12 +1,12 @@
 [package]
 name = "lupusreginaβ"
-version = "0.3.9"
+version = "0.3.10"
 authors = ["Ken Swenson <flat@esoteric.moe>"]
 license = "Apache-2.0"
 edition = "2018"
 
 [dependencies]
-chrono = "0.4.6"
+chrono = "0.4.9"
 directories = "~1.0"
 env_logger = "~0.6"
 log = "~0.4"

@@ -829,7 +829,7 @@ dependencies = [
 
 [[package]]
 name = "lupusreginaβ"
-version = "0.3.9"
+version = "0.3.10"
 dependencies = [
  "chrono 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "directories 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",

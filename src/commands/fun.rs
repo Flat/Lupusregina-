@@ -55,10 +55,25 @@ lazy_static! {
         "Bureaucracy",
         "The Aftermath",
     ];
+    static ref DAPOSTLES: Vec<&'static str> = vec![
+        "Mungday",
+        "Mojoday",
+        "Syaday",
+        "Zaraday",
+        "Maladay",
+    ];
+    static ref DHOLIDAYS: Vec<&'static str> = vec![
+        "Chaosflux",
+        "Discoflux",
+        "Confuflux",
+        "Bureflux",
+        "Afflux",
+    ];
+
 }
 
 struct Dday {
-    season: u32,
+    season_day: u32,
     day: u32,
     year: i32,
     tibs_day: bool,
@@ -67,23 +82,19 @@ struct Dday {
 impl From<Date<Local>> for Dday {
     fn from(date: Date<Local>) -> Self {
         let year = date.year() + 1166;
-        let mut day_of_year = date.ordinal();
-        let mut season = 0;
+        let mut day_of_year = date.ordinal0();
         let mut tibs_day = false;
-        if year % 4 == 2 {
-            match day_of_year.cmp(&59) {
+        if year % 4 == 0 && year % 100 != 0 || year % 400 == 0 {
+            match day_of_year.cmp(&60) {
                 Ordering::Equal => tibs_day = true,
                 Ordering::Greater => day_of_year -= 1,
                 Ordering::Less => (),
             }
         };
-        while day_of_year >= 73 {
-            season += 1;
-            day_of_year -= 73;
-        }
+        let day_of_season = day_of_year % 73 +1;
         Dday {
             year,
-            season,
+            season_day: day_of_season,
             day: day_of_year,
             tibs_day,
         }
@@ -98,10 +109,14 @@ impl fmt::Display for Dday {
             write!(
                 f,
                 "Today is {}, the {}{} day of {} in the YOLD {}",
-                DDAYS[(self.day % 5) as usize],
-                self.day,
-                parse_int_ordinal_suffix(self.day),
-                DSEASONS[self.season as usize],
+                match self.season_day {
+                    5 => DAPOSTLES[(self.day / 73) as usize],
+                    50 => DHOLIDAYS[(self.day / 73) as usize],
+                    _ => DDAYS[(self.day % 5) as usize],
+                },
+                self.season_day,
+                parse_int_ordinal_suffix(self.season_day),
+                DSEASONS[(self.day / 73) as usize],
                 self.year
             )
         }
