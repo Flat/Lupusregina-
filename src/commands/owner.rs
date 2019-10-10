@@ -247,13 +247,13 @@ fn set(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResult {
         "DND" => OnlineStatus::DoNotDisturb,
         "INVISIBLE" => OnlineStatus::Invisible,
         "OFFLINE" => OnlineStatus::Offline,
-        _ => Err("Invalid status")?,
+        _ => return Err("Invalid status".into()),
     };
     let kind = match args.single::<String>()?.to_ascii_uppercase().as_ref() {
         "PLAYING" => ActivityType::Playing,
         "LISTENING" => ActivityType::Listening,
         "STREAMING" => ActivityType::Streaming,
-        _ => Err("Invalid type")?,
+        _ => return Err("Invalid type".into()),
     };
     match kind {
         ActivityType::Playing => context.set_presence(Some(Activity::playing(args.rest())), status),
@@ -264,7 +264,7 @@ fn set(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResult {
             let url = args.single::<String>()?;
             context.set_presence(Some(Activity::streaming(args.rest(), &url)), status)
         }
-        _ => Err("Invalid type")?,
+        _ => return Err("Invalid type".into()),
     }
     Ok(())
 }

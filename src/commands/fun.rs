@@ -25,6 +25,7 @@ use serenity::model::channel::Message;
 use serenity::utils::Colour;
 
 use lazy_static::lazy_static;
+use std::cmp::Ordering;
 
 lazy_static! {
     static ref DS1FILLERS: Vec<&'static str> =
@@ -70,10 +71,10 @@ impl From<Date<Local>> for Dday {
         let mut season = 0;
         let mut tibs_day = false;
         if year % 4 == 2 {
-            if day_of_year == 59 {
-                tibs_day = true
-            } else if day_of_year > 59 {
-                day_of_year -= 1
+            match day_of_year.cmp(&59) {
+                Ordering::Equal => tibs_day = true,
+                Ordering::Greater => day_of_year -= 1,
+                Ordering::Less => (),
             }
         };
         while day_of_year >= 73 {
