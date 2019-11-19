@@ -1,6 +1,6 @@
 [package]
 name = "lupusreginaβ"
-version = "0.3.10"
+version = "0.3.11"
 authors = ["Ken Swenson <flat@esoteric.moe>"]
 license = "Apache-2.0"
 edition = "2018"
@@ -10,7 +10,7 @@ chrono = "0.4.9"
 directories = "~1.0"
 env_logger = "~0.6"
 log = "~0.4"
-kankyo = {git = "https://github.com/rusty-crates/kankyo"}
+kankyo = "0.3.0"
 rust-ini = "0.13"
 rusqlite = "0.18"
 typemap = "~0.3"
