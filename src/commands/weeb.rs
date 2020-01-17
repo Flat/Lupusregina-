@@ -21,7 +21,7 @@ use serenity::model::channel::Message;
 use serenity::prelude::Context;
 use serenity::utils::Colour;
 
-use reqwest::Client as ReqwestClient;
+use reqwest::blocking::Client as ReqwestClient;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -263,7 +263,7 @@ fn anime_query(
 ) -> Result<Response<anime_query::ResponseData>, failure::Error> {
     let request_body = AnimeQuery::build_query(variables);
     let client = ReqwestClient::new();
-    let mut res = client
+    let res = client
         .post(ANILIST_API_ENDPOINT)
         .json(&request_body)
         .send()?;
@@ -275,7 +275,7 @@ fn manga_query(
 ) -> Result<Response<manga_query::ResponseData>, failure::Error> {
     let request_body = MangaQuery::build_query(variables);
     let client = ReqwestClient::new();
-    let mut res = client
+    let res = client
         .post(ANILIST_API_ENDPOINT)
         .json(&request_body)
         .send()?;

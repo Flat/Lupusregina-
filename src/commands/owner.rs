@@ -62,7 +62,7 @@ fn info(context: &mut Context, msg: &Message) -> CommandResult {
             cache.user.face(),
             cache.guilds.len().to_string(),
             cache.private_channels.len().to_string(),
-            cache.users.len()
+            cache.users.len(),
         )
     };
 
@@ -159,7 +159,7 @@ fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandRes
             .ok_or_else(|| "Failed to get attachment")?
             .url;
         let tmpdir = tempfile::tempdir()?;
-        let mut response = reqwest::get(url)?;
+        let mut response = reqwest::blocking::get(url)?;
         let (mut outfile, out_path) = {
             let filename = response
                 .url()
@@ -182,7 +182,7 @@ fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandRes
     } else {
         let url = args.single::<String>()?;
         let tmpdir = tempfile::tempdir()?;
-        let mut response = reqwest::get(&url)?;
+        let mut response = reqwest::blocking::get(&url)?;
         let (mut outfile, outpath) = {
             let filename = response
                 .url()

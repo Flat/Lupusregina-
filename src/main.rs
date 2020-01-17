@@ -15,7 +15,6 @@
  */
 
 #![feature(try_blocks)]
-#![feature(result_map_or_else)]
 extern crate env_logger;
 #[macro_use]
 extern crate log;
@@ -76,7 +75,7 @@ const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 struct General;
 
 #[group]
-#[commands(eightball, darksouls, darksouls3, ddate)]
+#[commands(bloodborne, darksouls, darksouls3, ddate, eightball)]
 struct Fun;
 
 #[group]

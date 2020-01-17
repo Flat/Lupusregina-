@@ -1,20 +1,20 @@
 [package]
 name = "lupusreginaβ"
-version = "0.3.11"
+version = "0.3.12"
 authors = ["Ken Swenson <flat@esoteric.moe>"]
 license = "Apache-2.0"
 edition = "2018"
 
 [dependencies]
-chrono = "0.4.9"
-directories = "~1.0"
-env_logger = "~0.6"
+chrono = "0.4.10"
+directories = "~2.0"
+env_logger = "~0.7"
 log = "~0.4"
 kankyo = "0.3.0"
-rust-ini = "0.13"
-rusqlite = "0.18"
+rust-ini = "0.14"
+rusqlite = "0.21"
 typemap = "~0.3"
-rand = "0.6"
+rand = "~0.7"
 failure = "0.1"
 tempfile = "3"
 graphql_client = "0.8"
@@ -28,6 +28,6 @@ branch = "next"
 features = ["voice", "framework", "standard_framework", "absolute_ratelimits"]
 
 [dependencies.reqwest]
-version = "0.9"
+version = "0.10"
 default-features = false
-features = ["rustls-tls"]
+features = ["rustls-tls", "json", "blocking"]

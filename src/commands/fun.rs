@@ -41,6 +41,15 @@ lazy_static! {
             .split('\n')
             .collect()
     };
+    static ref BBTEMPLATES: Vec<&'static str> =
+        { include_str!("data/bbtemplates.txt").split('\n').collect() };
+    static ref BBFILLERS: Vec<&'static str> =
+        { include_str!("data/bbfillers.txt").split('\n').collect() };
+    static ref BBCONJUNCTIONS: Vec<&'static str> = {
+        include_str!("data/bbconjunctions.txt")
+            .split('\n')
+            .collect()
+    };
     static ref DDAYS: Vec<&'static str> = vec![
         "Sweetmorn",
         "Boomtime",
@@ -55,21 +64,10 @@ lazy_static! {
         "Bureaucracy",
         "The Aftermath",
     ];
-    static ref DAPOSTLES: Vec<&'static str> = vec![
-        "Mungday",
-        "Mojoday",
-        "Syaday",
-        "Zaraday",
-        "Maladay",
-    ];
-    static ref DHOLIDAYS: Vec<&'static str> = vec![
-        "Chaosflux",
-        "Discoflux",
-        "Confuflux",
-        "Bureflux",
-        "Afflux",
-    ];
-
+    static ref DAPOSTLES: Vec<&'static str> =
+        vec!["Mungday", "Mojoday", "Syaday", "Zaraday", "Maladay",];
+    static ref DHOLIDAYS: Vec<&'static str> =
+        vec!["Chaosflux", "Discoflux", "Confuflux", "Bureflux", "Afflux",];
 }
 
 struct Dday {
@@ -91,7 +89,7 @@ impl From<Date<Local>> for Dday {
                 Ordering::Less => (),
             }
         };
-        let day_of_season = day_of_year % 73 +1;
+        let day_of_season = day_of_year % 73 + 1;
         Dday {
             year,
             season_day: day_of_season,
@@ -238,6 +236,49 @@ fn darksouls3(context: &mut Context, msg: &Message, _args: Args) -> CommandResul
     } else {
         let template = DS3TEMPLATES[rng.gen_range(0, DS3TEMPLATES.len())];
         let filler = DS3FILLERS[rng.gen_range(0, DS3FILLERS.len())];
+        let message = template.replace("{}", filler);
+        msg.channel_id
+            .say(&context, message)
+            .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+    }
+}
+
+#[command]
+#[description = "Display a randomly generated Bloodborne note."]
+#[aliases("bb")]
+fn bloodborne(context: &mut Context, msg: &Message, _args: Args) -> CommandResult {
+    let mut rng = thread_rng();
+    let has_conjunction = rng.gen_range(0, 2);
+    if has_conjunction == 1 {
+        let conjunction = BBCONJUNCTIONS[rng.gen_range(0, BBCONJUNCTIONS.len())];
+        let mut message: String = String::new();
+        for x in 0..2 {
+            if x == 0 {
+                message.push_str(
+                    &BBTEMPLATES[rng.gen_range(0, BBTEMPLATES.len())]
+                        .replace("{}", BBFILLERS[rng.gen_range(0, BBFILLERS.len())]),
+                );
+                if conjunction != "," {
+                    message.push(' ');
+                    message.push_str(conjunction);
+                    message.push(' ');
+                } else {
+                    message.push_str(conjunction);
+                    message.push(' ');
+                }
+            } else {
+                message.push_str(
+                    &BBTEMPLATES[rng.gen_range(0, BBTEMPLATES.len())]
+                        .replace("{}", BBFILLERS[rng.gen_range(0, BBFILLERS.len())]),
+                );
+            }
+        }
+        msg.channel_id
+            .say(&context, message)
+            .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+    } else {
+        let template = BBTEMPLATES[rng.gen_range(0, BBTEMPLATES.len())];
+        let filler = BBFILLERS[rng.gen_range(0, BBFILLERS.len())];
         let message = template.replace("{}", filler);
         msg.channel_id
             .say(&context, message)
