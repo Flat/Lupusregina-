@@ -100,7 +100,7 @@ struct Presence;
 struct Moderation;
 
 #[group]
-#[commands(anime, manga)]
+#[commands(anime, manga, vtuber)]
 struct Weeb;
 
 #[help]

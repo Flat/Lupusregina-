@@ -23,6 +23,7 @@ use crate::db;
 
 #[command]
 #[description = "Sets the prefix for the current Guild."]
+#[owner_privilege]
 #[required_permissions("ADMINISTRATOR")]
 fn setprefix(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     let arg = args.single::<String>().map_err(|_| "Arg.single was None")?;

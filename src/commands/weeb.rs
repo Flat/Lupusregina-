@@ -16,12 +16,15 @@
 
 use chrono::Utc;
 use graphql_client::{GraphQLQuery, Response};
+use serde::Deserialize;
 use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
 use serenity::model::channel::Message;
 use serenity::prelude::Context;
 use serenity::utils::Colour;
 
 use reqwest::blocking::Client as ReqwestClient;
+use std::collections::HashMap;
+use std::convert::TryFrom;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -43,6 +46,9 @@ const ANILIST_ICON: &str = "https://anilist.co/img/icons/apple-touch-icon-152x15
 const ANILIST_API_ENDPOINT: &str = "https://graphql.anilist.co";
 const ANILIST_MANGA_PATH: &str = "https://anilist.co/manga/";
 const ANILIST_ANIME_PATH: &str = "https://anilist.co/anime/";
+const VIRTUALYOUTUBER_WIKI_SEARCH: &str = "https://virtualyoutuber.fandom.com/api/v1/Search/List";
+const VIRTUALYOUTUBER_WIKI_DETAILS: &str =
+    "https://virtualyoutuber.fandom.com/api/v1/Articles/Details";
 
 #[command]
 #[description = "Shows information about an anime from Anilist."]
@@ -280,6 +286,116 @@ fn manga_query(
         .json(&request_body)
         .send()?;
     res.json().map_err(From::from)
+}
+
+#[derive(Deserialize, Clone)]
+struct LocalWikiSearchResult {
+    url: String,
+    ns: u64,
+    id: u64,
+    title: String,
+    snippet: String,
+}
+
+#[derive(Deserialize, Clone)]
+struct LocalWikiSearchResultSet {
+    batches: u64,
+    items: Vec<LocalWikiSearchResult>,
+    total: u64,
+    #[serde(rename = "currentBatch")]
+    current_batch: u64,
+    next: u64,
+}
+
+#[derive(Deserialize, Clone)]
+struct Revision {
+    id: u64,
+    user: String,
+    user_id: u64,
+    timestamp: String,
+}
+
+#[derive(Deserialize, Clone)]
+struct OriginalDimension {
+    width: u64,
+    height: u64,
+}
+
+#[derive(Deserialize, Clone)]
+struct ExpandedArticle {
+    original_dimensions: OriginalDimension,
+    url: String,
+    ns: u64,
+    #[serde(rename = "abstract")]
+    synopsis: String,
+    thumbnail: Option<String>,
+    revision: Revision,
+    id: u64,
+    title: String,
+    r#type: String,
+    comments: u64,
+}
+
+#[derive(Deserialize, Clone)]
+struct ExpandedArticleResultSet {
+    items: HashMap<String, ExpandedArticle>,
+    basepath: String,
+}
+
+#[command]
+#[description = "Shows information about a Virtual YouTuber."]
+#[usage = "<Virtual YouTuber Name>"]
+#[example = "Natsuiro Matsuri"]
+#[min_args(1)]
+fn vtuber(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
+    let query = args.rest();
+    let search = search_vtuber_wiki(query.into())?;
+    let details = get_vtuber_article_details(search.id)?;
+    msg.channel_id
+        .send_message(context, |m| {
+            m.embed(|e| {
+                e.title(details.title)
+                    .url(strip_stupid_backslashes(search.url))
+                    .description(details.synopsis);
+                if let Some(thumbnail) = details.thumbnail {
+                    e.thumbnail(strip_stupid_backslashes(thumbnail));
+                }
+                e
+            })
+        })
+        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+}
+
+fn search_vtuber_wiki(search: String) -> Result<LocalWikiSearchResult, Box<dyn std::error::Error>> {
+    let client = ReqwestClient::new();
+    let results: LocalWikiSearchResultSet = client
+        .get(VIRTUALYOUTUBER_WIKI_SEARCH)
+        .query(&[("limit", "1"), ("query", &search)])
+        .send()?
+        .json()?;
+    results
+        .items
+        .get(0)
+        .cloned()
+        .ok_or(format!("No results for {}", search).into())
+}
+
+fn get_vtuber_article_details(id: u64) -> Result<ExpandedArticle, Box<dyn std::error::Error>> {
+    let client = ReqwestClient::new();
+    let results: ExpandedArticleResultSet = client
+        .get(VIRTUALYOUTUBER_WIKI_DETAILS)
+        .query(&[("abstract", "500"), ("ids", &id.to_string())])
+        .send()?
+        .json()?;
+    results
+        .items
+        .get(&id.to_string())
+        .cloned()
+        .ok_or(Box::try_from(format!("Unable to get article with ID {}", id)).unwrap())
+}
+
+fn strip_stupid_backslashes(url: String) -> String {
+    url.replace("\\", "")
 }
 
 fn format_desc(desc: String) -> String {
