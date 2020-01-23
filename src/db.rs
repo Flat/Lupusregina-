@@ -17,9 +17,14 @@
 use crate::util::get_project_dirs;
 use rusqlite::{Connection, NO_PARAMS};
 use serenity::model::id::GuildId;
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 
+struct PrefixRow {
+    guild_id: String,
+    prefix: String,
+}
 pub fn create_db() {
     if let Some(project_dirs) = get_project_dirs() {
         let db = project_dirs.data_dir().join("lupus.db");
@@ -59,12 +64,30 @@ pub fn get_guild_prefix(guild_id: GuildId) -> Result<String, Box<dyn Error>> {
         .data_dir()
         .join("lupus.db");
     let conn = Connection::open(db)?;
-    let mut statement = conn.prepare(&format!(
-        "SELECT * FROM Prefix WHERE guild_id == {};",
-        guild_id.as_u64()
-    ))?;
-    let mut rows = statement.query(NO_PARAMS)?;
+    let mut statement = conn.prepare(&"SELECT * FROM Prefix WHERE guild_id == ?;")?;
+    let mut rows = statement.query(&[guild_id.as_u64().to_string()])?;
     Ok(rows.next()?.ok_or("Guild not found.")?.get(1)?)
+}
+
+pub fn get_all_prefixes() -> Result<HashMap<u64, String>, Box<dyn Error>> {
+    let db = get_project_dirs()
+        .ok_or("Could not open project directory.")?
+        .data_dir()
+        .join("lupus.db");
+    let conn = Connection::open(db)?;
+    let mut statement = conn.prepare(&"SELECT * FROM Prefix")?;
+    let rows = statement.query_map(NO_PARAMS, |row| {
+        Ok(PrefixRow {
+            guild_id: row.get(0)?,
+            prefix: row.get(1)?,
+        })
+    })?;
+    let mut prefixes = HashMap::<u64, String>::new();
+    for row in rows {
+        let row = row?;
+        prefixes.insert(row.guild_id.parse()?, row.prefix);
+    }
+    Ok(prefixes)
 }
 
 pub fn set_guild_prefix(guild_id: GuildId, prefix: String) -> Result<(), Box<dyn Error>> {

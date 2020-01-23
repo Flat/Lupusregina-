@@ -377,7 +377,7 @@ fn search_vtuber_wiki(search: String) -> Result<LocalWikiSearchResult, Box<dyn s
         .items
         .get(0)
         .cloned()
-        .ok_or(format!("No results for {}", search).into())
+        .ok_or_else(|| format!("No results for {}", search).into())
 }
 
 fn get_vtuber_article_details(id: u64) -> Result<ExpandedArticle, Box<dyn std::error::Error>> {
@@ -391,7 +391,7 @@ fn get_vtuber_article_details(id: u64) -> Result<ExpandedArticle, Box<dyn std::e
         .items
         .get(&id.to_string())
         .cloned()
-        .ok_or(Box::try_from(format!("Unable to get article with ID {}", id)).unwrap())
+        .ok_or_else(|| Box::try_from(format!("Unable to get article with ID {}", id)).unwrap())
 }
 
 fn strip_stupid_backslashes(url: String) -> String {

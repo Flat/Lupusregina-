@@ -20,6 +20,7 @@ use serenity::framework::standard::{macros::command, Args, CommandError, Command
 use serenity::model::channel::Message;
 
 use crate::db;
+use crate::util::Prefixes;
 
 #[command]
 #[description = "Sets the prefix for the current Guild."]
@@ -28,6 +29,13 @@ use crate::db;
 fn setprefix(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     let arg = args.single::<String>().map_err(|_| "Arg.single was None")?;
     let guild_id = msg.guild_id.ok_or_else(|| "guild_id was None")?;
+    {
+        let mut data = context.data.write();
+        let prefixes = data
+            .get_mut::<Prefixes>()
+            .ok_or_else(|| "Unable to get Prefix HashMap from context data.")?;
+        prefixes.insert(*guild_id.as_u64(), arg.clone());
+    }
     db::set_guild_prefix(guild_id, arg)
         .and_then(|_| {
             msg.channel_id

@@ -44,6 +44,12 @@ impl Key for ClientShardManager {
     type Value = Arc<Mutex<ShardManager>>;
 }
 
+pub struct Prefixes;
+
+impl Key for Prefixes {
+    type Value = HashMap<u64, String>;
+}
+
 pub fn get_project_dirs() -> Option<ProjectDirs> {
     ProjectDirs::from("moe.esoteric", "flat", "Lupusreginaβ")
 }

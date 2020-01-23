@@ -36,7 +36,7 @@ use serenity::model::prelude::{GuildId, Message};
 use serenity::prelude::*;
 
 use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*, weeb::*};
-use crate::util::get_configuration;
+use crate::util::{get_configuration, Prefixes};
 use serenity::framework::standard::DispatchError::Ratelimited;
 
 pub mod commands;
@@ -139,13 +139,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     client.with_framework(
         StandardFramework::new()
             .configure(|c| {
-                c.dynamic_prefix(|_, msg| {
+                c.dynamic_prefix(|ctx, msg| {
                     if msg.is_private() {
                         return Some("".into());
                     }
                     if let Some(guild_id) = msg.guild_id {
-                        let prefix =
-                            db::get_guild_prefix(guild_id).map_or_else(|_| ".".into(), |pref| pref);
+                        let prefixes = { ctx.data.read().get::<Prefixes>().cloned() };
+                        let prefix = prefixes.map_or_else(
+                            || ".".into(),
+                            |pref| {
+                                pref.get(guild_id.as_u64())
+                                    .map_or_else(|| ".".into(), |prefix| prefix.into())
+                            },
+                        );
                         Some(prefix)
                     } else {
                         Some(".".into())
@@ -189,12 +195,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .group(&MODERATION_GROUP)
             .group(&WEEB_GROUP),
     );
-
+    let prefixes = db::get_all_prefixes().unwrap_or_else(|_| HashMap::<u64, String>::new());
     {
         let mut data = client.data.write();
         data.insert::<util::Config>(Arc::clone(&Arc::new(conf)));
         data.insert::<util::Uptime>(HashMap::default());
         data.insert::<util::ClientShardManager>(Arc::clone(&client.shard_manager));
+        data.insert::<util::Prefixes>(prefixes);
     }
 
     client.start_autosharded().map_err(|e| e.into())
