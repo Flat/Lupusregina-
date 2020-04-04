@@ -25,13 +25,11 @@ use serenity::utils::Colour;
 
 use crate::util;
 use serenity::model::prelude::{Activity, ActivityType};
-use std::fs::File;
-use std::io::copy;
 
 #[command]
-fn info(context: &mut Context, msg: &Message) -> CommandResult {
+async fn info(context: &mut Context, msg: &Message) -> CommandResult {
     let uptime = {
-        let data = context.data.read();
+        let data = context.data.read().await;
         match data.get::<util::Uptime>() {
             Some(time) => {
                 if let Some(boot_time) = time.get("boot") {
@@ -56,7 +54,7 @@ fn info(context: &mut Context, msg: &Message) -> CommandResult {
     };
 
     let (name, face, guilds, channels, users) = {
-        let cache = context.cache.read();
+        let cache = context.cache.read().await;
         (
             cache.user.name.to_owned(),
             cache.user.face(),
@@ -87,14 +85,15 @@ fn info(context: &mut Context, msg: &Message) -> CommandResult {
                     .field("Users", users, false)
             })
         })
+        .await
         .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
 }
 
 #[command]
-fn reload(context: &mut Context, msg: &Message) -> CommandResult {
+async fn reload(context: &mut Context, msg: &Message) -> CommandResult {
     let conf = util::get_configuration()?;
     {
-        let mut data = context.data.write();
+        let mut data = context.data.write().await;
         let data_conf = data
             .get_mut::<crate::util::Config>()
             .ok_or("Failed to read config from Client Data")?;
@@ -102,6 +101,7 @@ fn reload(context: &mut Context, msg: &Message) -> CommandResult {
     }
     msg.channel_id
         .say(context, "Reloaded config!")
+        .await
         .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
 }
 
@@ -110,13 +110,15 @@ fn reload(context: &mut Context, msg: &Message) -> CommandResult {
 #[usage = "\"<Username>\""]
 #[example = "\"Shalltear Bloodfallen\""]
 #[min_args(1)]
-fn rename(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResult {
+async fn rename(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResult {
     let name = args.single_quoted::<String>()?;
     context
         .cache
         .write()
+        .await
         .user
         .edit(&context, |p| p.username(name))
+        .await
         .map_err(|e| CommandError(e.to_string()))
 }
 
@@ -125,12 +127,13 @@ fn rename(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResul
 #[usage = "\"[<Username>]\""]
 #[example = "\"Shalltear Bloodfallen\""]
 #[only_in("guilds")]
-fn nickname(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+async fn nickname(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
         if let Some(guild_id) = msg.guild_id {
             context
                 .http
                 .edit_nickname(guild_id.0, None)
+                .await
                 .map_err(|e| CommandError(e.to_string()))?
         }
     } else {
@@ -139,6 +142,7 @@ fn nickname(context: &mut Context, msg: &Message, mut args: Args) -> CommandResu
             context
                 .http
                 .edit_nickname(guild_id.0, Some(&nick))
+                .await
                 .map_err(|e| CommandError(e.to_string()))?
         }
     }
@@ -150,7 +154,7 @@ fn nickname(context: &mut Context, msg: &Message, mut args: Args) -> CommandResu
 #[description = "(Un)sets the bot's avatar. Takes a url, nothing, or an attachment."]
 #[usage = "[<avatar_url>]"]
 #[example = "https://s4.anilist.co/file/anilistcdn/character/large/126870-DKc1B7cvoUu7.jpg"]
-fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+async fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     let mut p = serenity::builder::EditProfile::default();
     if !msg.attachments.is_empty() {
         let url = &msg
@@ -158,77 +162,51 @@ fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandRes
             .get(0)
             .ok_or_else(|| "Failed to get attachment")?
             .url;
-        let tmpdir = tempfile::tempdir()?;
-        let mut response = reqwest::blocking::get(url)?;
-        let (mut outfile, out_path) = {
-            let filename = response
-                .url()
-                .path_segments()
-                .and_then(|seg| seg.last())
-                .and_then(|name| if name.is_empty() { None } else { Some(name) })
-                .ok_or_else(|| "Failed to get filename from url.")?;
-            let filename = tmpdir.path().join(filename);
-            (File::create(filename.clone())?, filename)
-        };
-        copy(&mut response, &mut outfile)?;
-        let base64 = serenity::utils::read_image(out_path)?;
-        p.avatar(Some(&base64));
+        let image = reqwest::get(url).await?.bytes().await?;
+        p.avatar(Some(&base64::encode(image)));
         let map = serenity::utils::hashmap_to_json_map(p.0);
-        context.http.edit_profile(&map)?;
+        context.http.edit_profile(&map).await?;
     } else if args.is_empty() {
         p.avatar(None);
         let map = serenity::utils::hashmap_to_json_map(p.0);
-        context.http.edit_profile(&map)?;
+        context.http.edit_profile(&map).await?;
     } else {
         let url = args.single::<String>()?;
-        let tmpdir = tempfile::tempdir()?;
-        let mut response = reqwest::blocking::get(&url)?;
-        let (mut outfile, outpath) = {
-            let filename = response
-                .url()
-                .path_segments()
-                .and_then(|seg| seg.last())
-                .and_then(|name| if name.is_empty() { None } else { Some(name) })
-                .ok_or_else(|| "Failed to get filename from url.")?;
-            let filename = tmpdir.path().join(filename);
-            (File::create(filename.clone())?, filename)
-        };
-        copy(&mut response, &mut outfile)?;
-        let base64 = serenity::utils::read_image(outpath)?;
-        p.avatar(Some(&base64));
+        let image = reqwest::get(&url).await?.bytes().await?;
+        p.avatar(Some(&base64::encode(image)));
         let map = serenity::utils::hashmap_to_json_map(p.0);
-        context.http.edit_profile(&map)?;
+        context.http.edit_profile(&map).await?;
     }
     Ok(())
 }
 
 #[command]
-fn online(context: &mut Context, _msg: &Message) -> CommandResult {
-    context.online();
+async fn online(context: &mut Context, _msg: &Message) -> CommandResult {
+    context.online().await;
     Ok(())
 }
 
 #[command]
-fn idle(context: &mut Context, _msg: &Message) -> CommandResult {
-    context.idle();
+async fn idle(context: &mut Context, _msg: &Message) -> CommandResult {
+    context.idle().await;
     Ok(())
 }
 
 #[command]
-fn dnd(context: &mut Context, _msg: &Message) -> CommandResult {
-    context.dnd();
+async fn dnd(context: &mut Context, _msg: &Message) -> CommandResult {
+    context.dnd().await;
     Ok(())
 }
 
 #[command]
-fn invisible(context: &mut Context, _msg: &Message) -> CommandResult {
-    context.invisible();
+async fn invisible(context: &mut Context, _msg: &Message) -> CommandResult {
+    context.invisible().await;
     Ok(())
 }
 
 #[command]
-fn reset(context: &mut Context, _msg: &Message) -> CommandResult {
-    context.reset_presence();
+async fn reset(context: &mut Context, _msg: &Message) -> CommandResult {
+    context.reset_presence().await;
     Ok(())
 }
 
@@ -240,7 +218,7 @@ fn reset(context: &mut Context, _msg: &Message) -> CommandResult {
 #[usage = "<state> <activity> [<twitch url>] <status text>"]
 #[example = "online streaming https://twitch.tv/HeyZeusHeresToast Bloodborne"]
 #[min_args(3)]
-fn set(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResult {
+async fn set(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResult {
     let status = match args.single::<String>()?.to_ascii_uppercase().as_ref() {
         "ONLINE" => OnlineStatus::Online,
         "IDLE" => OnlineStatus::Idle,
@@ -256,13 +234,21 @@ fn set(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResult {
         _ => return Err("Invalid type".into()),
     };
     match kind {
-        ActivityType::Playing => context.set_presence(Some(Activity::playing(args.rest())), status),
+        ActivityType::Playing => {
+            context
+                .set_presence(Some(Activity::playing(args.rest())), status)
+                .await
+        }
         ActivityType::Listening => {
-            context.set_presence(Some(Activity::listening(args.rest())), status)
+            context
+                .set_presence(Some(Activity::listening(args.rest())), status)
+                .await
         }
         ActivityType::Streaming => {
             let url = args.single::<String>()?;
-            context.set_presence(Some(Activity::streaming(args.rest(), &url)), status)
+            context
+                .set_presence(Some(Activity::streaming(args.rest(), &url)), status)
+                .await
         }
         _ => return Err("Invalid type".into()),
     }

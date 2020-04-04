@@ -15,6 +15,7 @@
  */
 
 #![feature(try_blocks)]
+#![feature(async_closure)]
 extern crate env_logger;
 #[macro_use]
 extern crate log;
@@ -24,10 +25,11 @@ use std::env;
 use std::sync::Arc;
 
 use chrono::Utc;
+use serenity::async_trait;
 use serenity::framework::standard::{
     help_commands,
-    macros::{group, help},
-    Args, CommandGroup, CommandResult, HelpOptions, StandardFramework,
+    macros::{group, help, hook},
+    Args, CommandGroup, CommandResult, DispatchError, HelpOptions, StandardFramework,
 };
 use serenity::model::event::ResumedEvent;
 use serenity::model::gateway::Ready;
@@ -45,15 +47,16 @@ pub mod util;
 
 struct Handler;
 
+#[async_trait]
 impl EventHandler for Handler {
-    fn cache_ready(&self, _ctx: Context, guilds: Vec<GuildId>) {
+    async fn cache_ready(&self, _ctx: Context, guilds: Vec<GuildId>) {
         info!("Connected to {} guilds.", guilds.len());
     }
 
-    fn ready(&self, ctx: Context, ready: Ready) {
+    async fn ready(&self, ctx: Context, ready: Ready) {
         info!("Connected as {}", ready.user.name);
-        let mut data = ctx.data.write();
-        match data.get_mut::<util::Uptime>() {
+        let data = ctx.data.write();
+        match data.await.get_mut::<util::Uptime>() {
             Some(uptime) => {
                 uptime.entry(String::from("boot")).or_insert_with(Utc::now);
             }
@@ -61,7 +64,7 @@ impl EventHandler for Handler {
         };
     }
 
-    fn resume(&self, _: Context, _: ResumedEvent) {
+    async fn resume(&self, _: Context, _: ResumedEvent) {
         info!("Resumed");
     }
 }
@@ -104,7 +107,7 @@ struct Moderation;
 struct Weeb;
 
 #[help]
-fn my_help(
+async fn my_help(
     context: &mut Context,
     msg: &Message,
     args: Args,
@@ -112,10 +115,65 @@ fn my_help(
     groups: &[&'static CommandGroup],
     owners: HashSet<UserId>,
 ) -> CommandResult {
-    help_commands::with_embeds(context, msg, args, help_options, groups, owners)
+    help_commands::with_embeds(context, msg, args, help_options, groups, owners).await
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[hook]
+async fn after(
+    ctx: &mut Context,
+    msg: &Message,
+    command_name: &str,
+    command_result: CommandResult,
+) {
+    match command_result {
+        Ok(()) => msg.react(ctx, '\u{2705}').await.map_or_else(|_| (), |_| ()),
+        Err(e) => {
+            error!(
+                "Command {:?} triggered by {}: {:?}",
+                command_name,
+                msg.author.tag(),
+                e
+            );
+            msg.react(ctx, '\u{274C}').await.map_or_else(|_| (), |_| ());
+        }
+    }
+}
+
+#[hook]
+async fn dispatch_error(ctx: &mut Context, msg: &Message, error: DispatchError) -> () {
+    match error {
+        Ratelimited(e) => {
+            error!("{} failed: {:?}", msg.content, error);
+            let _ = msg
+                .channel_id
+                .say(&ctx, format!("Ratelimited: Try again in {} seconds.", e));
+        }
+        _ => error!("{} failed: {:?}", msg.content, error),
+    }
+}
+
+#[hook]
+async fn dynamic_prefix(ctx: &mut Context, msg: &Message) -> Option<String> {
+    if msg.is_private() {
+        return Some("".into());
+    }
+    if let Some(guild_id) = msg.guild_id {
+        let prefixes = async { ctx.data.read().await.get::<Prefixes>().cloned() }.await;
+        let prefix = prefixes.map_or_else(
+            || ".".into(),
+            |pref| {
+                pref.get(guild_id.as_u64())
+                    .map_or_else(|| ".".into(), |prefix| prefix.into())
+            },
+        );
+        Some(prefix)
+    } else {
+        Some(".".into())
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     kankyo::load(true)?;
     env_logger::init();
 
@@ -125,9 +183,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     db::create_db();
 
-    let mut client = Client::new(&token, Handler)?;
+    let client = Client::new(&token, Handler).await?;
 
-    let (owner, bot_id) = match client.cache_and_http.http.get_current_application_info() {
+    let (owner, bot_id) = match client
+        .cache_and_http
+        .http
+        .get_current_application_info()
+        .await
+    {
         Ok(info) => {
             let mut owners = HashSet::new();
             owners.insert(info.owner.id);
@@ -136,73 +199,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(why) => panic!("Could not access application information: {:?}", why),
     };
 
-    client.with_framework(
-        StandardFramework::new()
-            .configure(|c| {
-                c.dynamic_prefix(|ctx, msg| {
-                    if msg.is_private() {
-                        return Some("".into());
-                    }
-                    if let Some(guild_id) = msg.guild_id {
-                        let prefixes = { ctx.data.read().get::<Prefixes>().cloned() };
-                        let prefix = prefixes.map_or_else(
-                            || ".".into(),
-                            |pref| {
-                                pref.get(guild_id.as_u64())
-                                    .map_or_else(|| ".".into(), |prefix| prefix.into())
-                            },
-                        );
-                        Some(prefix)
-                    } else {
-                        Some(".".into())
-                    }
-                })
+    let framework = StandardFramework::new()
+        .configure(|c| {
+            c.dynamic_prefix(dynamic_prefix)
                 .on_mention(Some(bot_id))
                 .owners(owner)
-            })
-            .after(|context, message, command, result| match result {
-                Ok(()) => message
-                    .react(context, '\u{2705}')
-                    .map_or_else(|_| (), |_| ()),
-                Err(e) => {
-                    error!(
-                        "Command {:?} triggered by {}: {:?}",
-                        command,
-                        message.author.tag(),
-                        e
-                    );
-                    message
-                        .react(context, '\u{274C}')
-                        .map_or_else(|_| (), |_| ());
-                }
-            })
-            .on_dispatch_error(|context, message, error| match error {
-                Ratelimited(e) => {
-                    error!("{} failed: {:?}", message.content, error);
-                    let _ = message.channel_id.say(
-                        &context,
-                        format!("Ratelimited: Try again in {} seconds.", e),
-                    );
-                }
-                _ => error!("{} failed: {:?}", message.content, error),
-            })
-            .bucket("anilist", |b| b.time_span(60).limit(90))
-            .help(&MY_HELP)
-            .group(&GENERAL_GROUP)
-            .group(&FUN_GROUP)
-            .group(&ADMIN_GROUP)
-            .group(&OWNER_GROUP)
-            .group(&MODERATION_GROUP)
-            .group(&WEEB_GROUP),
-    );
+        })
+        .after(after)
+        .on_dispatch_error(dispatch_error)
+        .bucket("anilist", |b| b.time_span(60).limit(90))
+        .await
+        .help(&MY_HELP)
+        .group(&GENERAL_GROUP)
+        .group(&FUN_GROUP)
+        .group(&ADMIN_GROUP)
+        .group(&OWNER_GROUP)
+        .group(&MODERATION_GROUP)
+        .group(&WEEB_GROUP);
+
+    let mut client = Client::new_with_framework(&token, Handler, framework)
+        .await
+        .expect("Error creating client");
     let prefixes = db::get_all_prefixes().unwrap_or_else(|_| HashMap::<u64, String>::new());
     {
-        let mut data = client.data.write();
+        let mut data = client.data.write().await;
         data.insert::<util::Config>(Arc::clone(&Arc::new(conf)));
         data.insert::<util::Uptime>(HashMap::default());
         data.insert::<util::ClientShardManager>(Arc::clone(&client.shard_manager));
         data.insert::<util::Prefixes>(prefixes);
     }
 
-    client.start_autosharded().map_err(|e| e.into())
+    client.start_autosharded().await.map_err(|e| e.into())
 }

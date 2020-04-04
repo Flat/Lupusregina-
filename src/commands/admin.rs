@@ -26,21 +26,19 @@ use crate::util::Prefixes;
 #[description = "Sets the prefix for the current Guild."]
 #[owner_privilege]
 #[required_permissions("ADMINISTRATOR")]
-fn setprefix(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+async fn setprefix(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     let arg = args.single::<String>().map_err(|_| "Arg.single was None")?;
     let guild_id = msg.guild_id.ok_or_else(|| "guild_id was None")?;
     {
-        let mut data = context.data.write();
+        let mut data = context.data.write().await;
         let prefixes = data
             .get_mut::<Prefixes>()
             .ok_or_else(|| "Unable to get Prefix HashMap from context data.")?;
         prefixes.insert(*guild_id.as_u64(), arg.clone());
     }
-    db::set_guild_prefix(guild_id, arg)
-        .and_then(|_| {
-            msg.channel_id
-                .say(context, "Set prefix!")
-                .map_err(|e| e.into())
-        })
+    db::set_guild_prefix(guild_id, arg).map_err(|e| e.to_string())?;
+    msg.channel_id
+        .say(context, "Set prefix!")
+        .await
         .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
 }
