@@ -15,38 +15,37 @@
  */
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc};
 
 use chrono::DateTime;
 use chrono::Utc;
 use directories::ProjectDirs;
 use ini::Ini;
 use serenity::client::bridge::gateway::ShardManager;
-use serenity::prelude::Mutex;
+use serenity::prelude::{Mutex, TypeMapKey};
 use std::fs;
-use typemap::Key;
 
 pub struct Config;
 
-impl Key for Config {
+impl TypeMapKey for Config {
     type Value = Arc<Ini>;
 }
 
 pub struct Uptime;
 
-impl Key for Uptime {
+impl TypeMapKey for Uptime {
     type Value = HashMap<String, DateTime<Utc>>;
 }
 
 pub struct ClientShardManager;
 
-impl Key for ClientShardManager {
+impl TypeMapKey for ClientShardManager {
     type Value = Arc<Mutex<ShardManager>>;
 }
 
 pub struct Prefixes;
 
-impl Key for Prefixes {
+impl TypeMapKey for Prefixes {
     type Value = HashMap<u64, String>;
 }
 

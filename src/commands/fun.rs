@@ -28,27 +28,23 @@ use std::cmp::Ordering;
 
 lazy_static! {
     static ref DS1FILLERS: Vec<&'static str> =
-        { include_str!("data/ds1fillers.txt").split('\n').collect() };
+        include_str!("data/ds1fillers.txt").split('\n').collect();
     static ref DS1TEMPLATES: Vec<&'static str> =
-        { include_str!("data/ds1templates.txt").split('\n').collect() };
+        include_str!("data/ds1templates.txt").split('\n').collect();
     static ref DS3TEMPLATES: Vec<&'static str> =
-        { include_str!("data/ds3templates.txt").split('\n').collect() };
+        include_str!("data/ds3templates.txt").split('\n').collect();
     static ref DS3FILLERS: Vec<&'static str> =
-        { include_str!("data/ds3fillers.txt").split('\n').collect() };
-    static ref DS3CONJUNCTIONS: Vec<&'static str> = {
-        include_str!("data/ds3conjunctions.txt")
-            .split('\n')
-            .collect()
-    };
+        include_str!("data/ds3fillers.txt").split('\n').collect();
+    static ref DS3CONJUNCTIONS: Vec<&'static str> = include_str!("data/ds3conjunctions.txt")
+        .split('\n')
+        .collect();
     static ref BBTEMPLATES: Vec<&'static str> =
-        { include_str!("data/bbtemplates.txt").split('\n').collect() };
+        include_str!("data/bbtemplates.txt").split('\n').collect();
     static ref BBFILLERS: Vec<&'static str> =
-        { include_str!("data/bbfillers.txt").split('\n').collect() };
-    static ref BBCONJUNCTIONS: Vec<&'static str> = {
-        include_str!("data/bbconjunctions.txt")
-            .split('\n')
-            .collect()
-    };
+        include_str!("data/bbfillers.txt").split('\n').collect();
+    static ref BBCONJUNCTIONS: Vec<&'static str> = include_str!("data/bbconjunctions.txt")
+        .split('\n')
+        .collect();
     static ref DDAYS: Vec<&'static str> = vec![
         "Sweetmorn",
         "Boomtime",
