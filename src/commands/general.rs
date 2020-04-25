@@ -95,10 +95,7 @@ async fn avatar(context: &mut Context, msg: &Message, args: Args) -> CommandResu
                     .first()
                     .ok_or("Could not find member")?
                     .0
-                    .user_id()
-                    .await
-                    .to_user(&context)
-                    .await?
+                    .user
                     .face()
             };
             match result {
@@ -151,7 +148,7 @@ async fn userinfo(context: &mut Context, msg: &Message, args: Args) -> CommandRe
             .await?
     };
 
-    let user = member.user.read().await;
+    let user = member.user;
     let nickname = member.nick.map_or("None".to_owned(), |nick| nick);
     let member_joined = member
         .joined_at
