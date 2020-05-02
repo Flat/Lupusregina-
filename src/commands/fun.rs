@@ -120,7 +120,7 @@ impl fmt::Display for Dday {
 #[description = "Ask the magic eight ball your question and receive your fortune."]
 #[min_args(1)]
 #[aliases("8ball")]
-async fn eightball(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn eightball(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let answers = vec![
         "It is certain.",
         "It is decidedly so.",
@@ -193,7 +193,7 @@ async fn eightball(context: &mut Context, msg: &Message, args: Args) -> CommandR
 #[command]
 #[description = "Display a randomly generated Dark Souls message."]
 #[aliases("ds")]
-async fn darksouls(context: &mut Context, msg: &Message, _args: Args) -> CommandResult {
+async fn darksouls(context: &Context, msg: &Message, _args: Args) -> CommandResult {
     let mut rng = rand::rngs::StdRng::from_entropy();
     let template = DS1TEMPLATES[rng.gen_range(0, DS1TEMPLATES.len())];
     let filler = DS1FILLERS[rng.gen_range(0, DS1FILLERS.len())];
@@ -207,7 +207,7 @@ async fn darksouls(context: &mut Context, msg: &Message, _args: Args) -> Command
 #[command]
 #[description = "Display a randomly generated Dark Souls 3 message."]
 #[aliases("ds3")]
-async fn darksouls3(context: &mut Context, msg: &Message, _args: Args) -> CommandResult {
+async fn darksouls3(context: &Context, msg: &Message, _args: Args) -> CommandResult {
     let mut rng = rand::rngs::StdRng::from_entropy();
     let has_conjunction = rng.gen_range(0, 2);
     if has_conjunction == 1 {
@@ -252,7 +252,7 @@ async fn darksouls3(context: &mut Context, msg: &Message, _args: Args) -> Comman
 #[command]
 #[description = "Display a randomly generated Bloodborne note."]
 #[aliases("bb")]
-async fn bloodborne(context: &mut Context, msg: &Message, _args: Args) -> CommandResult {
+async fn bloodborne(context: &Context, msg: &Message, _args: Args) -> CommandResult {
     let mut rng = rand::rngs::StdRng::from_entropy();
     let has_conjunction = rng.gen_range(0, 2);
     if has_conjunction == 1 {
@@ -297,7 +297,7 @@ async fn bloodborne(context: &mut Context, msg: &Message, _args: Args) -> Comman
 #[command]
 #[description = "Display the current date of the Discordian/Erisian Calendar"]
 #[aliases("dd")]
-async fn ddate(context: &mut Context, msg: &Message, _args: Args) -> CommandResult {
+async fn ddate(context: &Context, msg: &Message, _args: Args) -> CommandResult {
     let today = Local::today();
     let message = Dday::from(today);
     msg.channel_id

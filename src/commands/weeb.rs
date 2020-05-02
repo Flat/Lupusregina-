@@ -56,7 +56,7 @@ const VIRTUALYOUTUBER_WIKI_DETAILS: &str =
 #[example = "Tate no Yuusha no Nariagari"]
 #[min_args(1)]
 #[bucket = "anilist"]
-async fn anime(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn anime(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let query = args.rest();
     let anime = anime_query(anime_query::Variables {
         title: Some(query.to_string()),
@@ -167,7 +167,7 @@ async fn anime(context: &mut Context, msg: &Message, args: Args) -> CommandResul
 #[example = "Tate no Yuusha no Nariagari"]
 #[bucket = "anilist"]
 #[min_args(1)]
-async fn manga(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn manga(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let query = args.rest();
     let manga = manga_query(manga_query::Variables {
         title: Some(query.to_string()),
@@ -353,7 +353,7 @@ struct ExpandedArticleResultSet {
 #[usage = "<Virtual YouTuber Name>"]
 #[example = "Natsuiro Matsuri"]
 #[min_args(1)]
-async fn vtuber(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn vtuber(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let query = args.rest();
     let search = search_vtuber_wiki(query.into()).await?;
     let details = get_vtuber_article_details(search.id).await?;

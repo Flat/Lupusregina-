@@ -25,7 +25,7 @@ use serenity::utils::Colour;
 
 #[command]
 #[description = "Shows information about the bot."]
-async fn about(context: &mut Context, msg: &Message) -> CommandResult {
+async fn about(context: &Context, msg: &Message) -> CommandResult {
     let (invite_url, face) = {
         let face = context.cache.read().await.user.face();
         match context
@@ -77,7 +77,7 @@ async fn about(context: &mut Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[description = "Shows the avatar for the user or specified user."]
-async fn avatar(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn avatar(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let face = if msg.mentions.is_empty() {
         if args.is_empty() {
             msg.author.face()
@@ -118,7 +118,7 @@ async fn avatar(context: &mut Context, msg: &Message, args: Args) -> CommandResu
 #[command]
 #[description = "Shows various information about a user"]
 #[only_in("guilds")]
-async fn userinfo(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn userinfo(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let guild_id = msg.guild_id.ok_or("Failed to get GuildID from Message.")?;
     let member = if msg.mentions.is_empty() {
         if args.is_empty() {
@@ -140,7 +140,7 @@ async fn userinfo(context: &mut Context, msg: &Message, args: Args) -> CommandRe
     } else {
         guild_id
             .member(
-                &context,
+                context,
                 msg.mentions
                     .first()
                     .ok_or("Failed to get user mentioned.")?,
@@ -172,7 +172,7 @@ async fn userinfo(context: &mut Context, msg: &Message, args: Args) -> CommandRe
 #[command]
 #[description = "Shows various information about the guild."]
 #[only_in("guilds")]
-async fn guildinfo(context: &mut Context, msg: &Message) -> CommandResult {
+async fn guildinfo(context: &Context, msg: &Message) -> CommandResult {
     let guild_id = msg
         .guild_id
         .ok_or_else(|| "Failed to get GuildID from Message.")?;
@@ -216,7 +216,7 @@ async fn guildinfo(context: &mut Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[description = "Responds with the current latency to Discord."]
-async fn ping(context: &mut Context, msg: &Message) -> CommandResult {
+async fn ping(context: &Context, msg: &Message) -> CommandResult {
     try {
         let now = Utc::now();
         let mut msg = msg.channel_id.say(&context, "Ping!").await?;
@@ -242,7 +242,7 @@ async fn ping(context: &mut Context, msg: &Message) -> CommandResult {
             .latency
             .ok_or_else(|| "Failed to get latency from shard.")?
             .as_millis();
-        msg.edit(&context, |m| {
+        msg.edit(context, |m| {
             m.content(&format!(
                 "Rest API: {}ms\nShard Latency: {}ms",
                 lping, shard_latency

@@ -26,7 +26,7 @@ use crate::util::Prefixes;
 #[description = "Sets the prefix for the current Guild."]
 #[owner_privilege]
 #[required_permissions("ADMINISTRATOR")]
-async fn setprefix(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+async fn setprefix(context: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let arg = args.single::<String>().map_err(|_| "Arg.single was None")?;
     let guild_id = msg.guild_id.ok_or_else(|| "guild_id was None")?;
     {

@@ -51,8 +51,10 @@ struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
-    async fn cache_ready(&self, _ctx: Context, guilds: Vec<GuildId>) {
+    async fn cache_ready(&self, ctx: Context, guilds: Vec<GuildId>) {
         info!("Connected to {} guilds.", guilds.len());
+        //let data = ctx.data.read();
+        //data.await.get::<util::ClientShardManager>()
     }
 
     async fn ready(&self, ctx: Context, ready: Ready) {
@@ -110,7 +112,7 @@ struct Weeb;
 
 #[help]
 async fn my_help(
-    context: &mut Context,
+    context: &Context,
     msg: &Message,
     args: Args,
     help_options: &'static HelpOptions,
@@ -122,7 +124,7 @@ async fn my_help(
 
 #[hook]
 async fn after(
-    ctx: &mut Context,
+    ctx: &Context,
     msg: &Message,
     command_name: &str,
     command_result: CommandResult,
@@ -142,7 +144,7 @@ async fn after(
 }
 
 #[hook]
-async fn dispatch_error(ctx: &mut Context, msg: &Message, error: DispatchError) -> () {
+async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> () {
     match error {
         Ratelimited(e) => {
             error!("{} failed: {:?}", msg.content, error);
@@ -155,7 +157,7 @@ async fn dispatch_error(ctx: &mut Context, msg: &Message, error: DispatchError) 
 }
 
 #[hook]
-async fn dynamic_prefix(ctx: &mut Context, msg: &Message) -> Option<String> {
+async fn dynamic_prefix(ctx: &Context, msg: &Message) -> Option<String> {
     if msg.is_private() {
         return Some("".into());
     }
@@ -217,9 +219,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client = Client::new(&token)
         .event_handler(Handler)
         .framework(framework)
-        .add_intent(GatewayIntents::GUILD_MESSAGES)
-        .add_intent(GatewayIntents::DIRECT_MESSAGES)
-        .add_intent(GatewayIntents::GUILD_MEMBERS)
+        // .add_intent(GatewayIntents::GUILD_MESSAGES)
+        // .add_intent(GatewayIntents::DIRECT_MESSAGES)
+        // .add_intent(GatewayIntents::GUILD_MEMBERS)
         .await
         .expect("Error creating client!");
 

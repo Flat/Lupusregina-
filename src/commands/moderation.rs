@@ -21,7 +21,7 @@ use serenity::prelude::Context;
 #[command]
 #[only_in("guilds")]
 #[required_permissions("BAN_MEMBERS")]
-async fn ban(context: &mut Context, msg: &Message) -> CommandResult {
+async fn ban(context: &Context, msg: &Message) -> CommandResult {
     if !msg.mentions.is_empty() {
         try {
             msg.guild_id
@@ -31,9 +31,9 @@ async fn ban(context: &mut Context, msg: &Message) -> CommandResult {
                 .ok_or("Failed to get Guild from GuildId")?
                 .read()
                 .await
-                .member(&context, msg.mentions[0].id)
+                .member(context, msg.mentions[0].id)
                 .await?
-                .ban(&context, &0u8)
+                .ban(context, &0u8)
                 .await?
         }
     } else {
@@ -47,7 +47,7 @@ async fn ban(context: &mut Context, msg: &Message) -> CommandResult {
 #[min_args(1)]
 #[only_in("guilds")]
 #[required_permissions("BAN_MEMBERS")]
-async fn unban(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn unban(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let guild = msg
         .guild_id
         .ok_or("Failed to get GuildId from Message")?
@@ -57,11 +57,11 @@ async fn unban(context: &mut Context, msg: &Message, args: Args) -> CommandResul
         .read()
         .await
         .clone();
-    let bans = guild.bans(&context).await?;
+    let bans = guild.bans(context).await?;
 
     for banned in bans {
         if banned.user.tag() == args.rest() {
-            guild.unban(&context, banned.user.id).await?;
+            guild.unban(context, banned.user.id).await?;
         }
     }
     Ok(())
@@ -71,7 +71,7 @@ async fn unban(context: &mut Context, msg: &Message, args: Args) -> CommandResul
 #[min_args(1)]
 #[only_in("guilds")]
 #[required_permissions("MANAGE_CHANNELS")]
-async fn setslowmode(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+async fn setslowmode(context: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let seconds = &args.single::<u64>()?;
     msg.channel_id
         .edit(context, |c| c.slow_mode_rate(*seconds))

@@ -27,7 +27,7 @@ use crate::util;
 use serenity::model::prelude::{Activity, ActivityType};
 
 #[command]
-async fn info(context: &mut Context, msg: &Message) -> CommandResult {
+async fn info(context: &Context, msg: &Message) -> CommandResult {
     let uptime = {
         let data = context.data.read().await;
         match data.get::<util::Uptime>() {
@@ -90,7 +90,7 @@ async fn info(context: &mut Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
-async fn reload(context: &mut Context, msg: &Message) -> CommandResult {
+async fn reload(context: &Context, msg: &Message) -> CommandResult {
     let conf = util::get_configuration()?;
     {
         let mut data = context.data.write().await;
@@ -110,7 +110,7 @@ async fn reload(context: &mut Context, msg: &Message) -> CommandResult {
 #[usage = "\"<Username>\""]
 #[example = "\"Shalltear Bloodfallen\""]
 #[min_args(1)]
-async fn rename(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResult {
+async fn rename(context: &Context, _msg: &Message, mut args: Args) -> CommandResult {
     let name = args.single_quoted::<String>()?;
     context
         .cache
@@ -127,7 +127,7 @@ async fn rename(context: &mut Context, _msg: &Message, mut args: Args) -> Comman
 #[usage = "\"[<Username>]\""]
 #[example = "\"Shalltear Bloodfallen\""]
 #[only_in("guilds")]
-async fn nickname(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+async fn nickname(context: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
         if let Some(guild_id) = msg.guild_id {
             context
@@ -154,7 +154,7 @@ async fn nickname(context: &mut Context, msg: &Message, mut args: Args) -> Comma
 #[description = "(Un)sets the bot's avatar. Takes a url, nothing, or an attachment."]
 #[usage = "[<avatar_url>]"]
 #[example = "https://s4.anilist.co/file/anilistcdn/character/large/126870-DKc1B7cvoUu7.jpg"]
-async fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+async fn setavatar(context: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let mut p = serenity::builder::EditProfile::default();
     if !msg.attachments.is_empty() {
         let url = &msg
@@ -181,31 +181,31 @@ async fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> Comm
 }
 
 #[command]
-async fn online(context: &mut Context, _msg: &Message) -> CommandResult {
+async fn online(context: &Context, _msg: &Message) -> CommandResult {
     context.online().await;
     Ok(())
 }
 
 #[command]
-async fn idle(context: &mut Context, _msg: &Message) -> CommandResult {
+async fn idle(context: &Context, _msg: &Message) -> CommandResult {
     context.idle().await;
     Ok(())
 }
 
 #[command]
-async fn dnd(context: &mut Context, _msg: &Message) -> CommandResult {
+async fn dnd(context: &Context, _msg: &Message) -> CommandResult {
     context.dnd().await;
     Ok(())
 }
 
 #[command]
-async fn invisible(context: &mut Context, _msg: &Message) -> CommandResult {
+async fn invisible(context: &Context, _msg: &Message) -> CommandResult {
     context.invisible().await;
     Ok(())
 }
 
 #[command]
-async fn reset(context: &mut Context, _msg: &Message) -> CommandResult {
+async fn reset(context: &Context, _msg: &Message) -> CommandResult {
     context.reset_presence().await;
     Ok(())
 }
@@ -218,7 +218,7 @@ async fn reset(context: &mut Context, _msg: &Message) -> CommandResult {
 #[usage = "<state> <activity> [<twitch url>] <status text>"]
 #[example = "online streaming https://twitch.tv/HeyZeusHeresToast Bloodborne"]
 #[min_args(3)]
-async fn set(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResult {
+async fn set(context: &Context, _msg: &Message, mut args: Args) -> CommandResult {
     let status = match args.single::<String>()?.to_ascii_uppercase().as_ref() {
         "ONLINE" => OnlineStatus::Online,
         "IDLE" => OnlineStatus::Idle,
