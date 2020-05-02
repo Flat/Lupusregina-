@@ -40,6 +40,8 @@ use serenity::prelude::*;
 use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*, weeb::*};
 use crate::util::{get_configuration, Prefixes};
 use serenity::framework::standard::DispatchError::Ratelimited;
+use serenity::http::Http;
+use serenity::client::bridge::gateway::GatewayIntents;
 
 pub mod commands;
 pub mod db;
@@ -183,27 +185,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     db::create_db();
 
-    let client = Client::new(&token, Handler).await?;
+    let http = Http::new_with_token(&token);
 
-    let (owner, bot_id) = match client
-        .cache_and_http
-        .http
-        .get_current_application_info()
-        .await
-    {
+    let (owners, bot_id) = match http.get_current_application_info().await {
         Ok(info) => {
             let mut owners = HashSet::new();
             owners.insert(info.owner.id);
             (owners, info.id)
-        }
-        Err(why) => panic!("Could not access application information: {:?}", why),
+        },
+        Err(why) => panic!("Could not access application info: {:?}", why),
     };
 
     let framework = StandardFramework::new()
         .configure(|c| {
             c.dynamic_prefix(dynamic_prefix)
                 .on_mention(Some(bot_id))
-                .owners(owner)
+                .owners(owners)
         })
         .after(after)
         .on_dispatch_error(dispatch_error)
@@ -217,9 +214,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .group(&MODERATION_GROUP)
         .group(&WEEB_GROUP);
 
-    let mut client = Client::new_with_framework(&token, Handler, framework)
+    let mut client = Client::new(&token)
+        .event_handler(Handler)
+        .framework(framework)
+        .add_intent(GatewayIntents::GUILD_MESSAGES)
+        .add_intent(GatewayIntents::DIRECT_MESSAGES)
+        .add_intent(GatewayIntents::GUILD_MEMBERS)
         .await
-        .expect("Error creating client");
+        .expect("Error creating client!");
+
     let prefixes = db::get_all_prefixes().unwrap_or_else(|_| HashMap::<u64, String>::new());
     {
         let mut data = client.data.write().await;
