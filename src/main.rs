@@ -39,9 +39,9 @@ use serenity::prelude::*;
 
 use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*, weeb::*};
 use crate::util::{get_configuration, Prefixes};
+use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::framework::standard::DispatchError::Ratelimited;
 use serenity::http::Http;
-use serenity::client::bridge::gateway::GatewayIntents;
 
 pub mod commands;
 pub mod db;
@@ -53,12 +53,22 @@ struct Handler;
 impl EventHandler for Handler {
     async fn cache_ready(&self, ctx: Context, guilds: Vec<GuildId>) {
         info!("Connected to {} guilds.", guilds.len());
-        //let data = ctx.data.read();
-        //data.await.get::<util::ClientShardManager>()
+        let shard_messenger = ctx.shard.lock().await;
+        shard_messenger.chunk_guilds(guilds, None, None);
     }
 
     async fn ready(&self, ctx: Context, ready: Ready) {
-        info!("Connected as {}", ready.user.name);
+        if let Some(shard) = ready.shard {
+            info!(
+                "Connected as {} on shard {}/{}",
+                ready.user.name,
+                shard[0] + 1,
+                shard[1]
+            );
+        } else {
+            info!("Connected as {}", ready.user.name);
+        }
+
         let data = ctx.data.write();
         match data.await.get_mut::<util::Uptime>() {
             Some(uptime) => {
@@ -123,12 +133,7 @@ async fn my_help(
 }
 
 #[hook]
-async fn after(
-    ctx: &Context,
-    msg: &Message,
-    command_name: &str,
-    command_result: CommandResult,
-) {
+async fn after(ctx: &Context, msg: &Message, command_name: &str, command_result: CommandResult) {
     match command_result {
         Ok(()) => msg.react(ctx, '\u{2705}').await.map_or_else(|_| (), |_| ()),
         Err(e) => {
@@ -194,7 +199,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut owners = HashSet::new();
             owners.insert(info.owner.id);
             (owners, info.id)
-        },
+        }
         Err(why) => panic!("Could not access application info: {:?}", why),
     };
 
@@ -219,9 +224,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client = Client::new(&token)
         .event_handler(Handler)
         .framework(framework)
-        // .add_intent(GatewayIntents::GUILD_MESSAGES)
-        // .add_intent(GatewayIntents::DIRECT_MESSAGES)
-        // .add_intent(GatewayIntents::GUILD_MEMBERS)
+        .add_intent(
+            GatewayIntents::GUILD_MESSAGES
+                | GatewayIntents::DIRECT_MESSAGES
+                | GatewayIntents::GUILD_MESSAGES
+                | GatewayIntents::GUILDS
+                | GatewayIntents::GUILD_PRESENCES,
+        )
         .await
         .expect("Error creating client!");
 
@@ -229,8 +238,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         let mut data = client.data.write().await;
         data.insert::<util::Config>(Arc::clone(&Arc::new(conf)));
-        data.insert::<util::Uptime>(HashMap::default());
         data.insert::<util::ClientShardManager>(Arc::clone(&client.shard_manager));
+        data.insert::<util::Uptime>(HashMap::default());
         data.insert::<util::Prefixes>(prefixes);
     }
 
