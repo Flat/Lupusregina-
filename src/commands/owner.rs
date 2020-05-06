@@ -162,20 +162,33 @@ async fn setavatar(context: &Context, msg: &Message, mut args: Args) -> CommandR
             .get(0)
             .ok_or_else(|| "Failed to get attachment")?
             .url;
-        let image = reqwest::get(url).await?.bytes().await?;
-        p.avatar(Some(&base64::encode(image)));
-        let map = serenity::utils::hashmap_to_json_map(p.0);
-        context.http.edit_profile(&map).await?;
+        let response = reqwest::get(url).await?;
+        let headers = response.headers().to_owned();
+        if let Some(content_type) = headers.get("Content-Type") {
+            let image = response.bytes().await?;
+            p.avatar(Some(&format!("data:{};base64,{}", content_type.to_str()?, &base64::encode(image))));
+            let map = serenity::utils::hashmap_to_json_map(p.0);
+            context.http.edit_profile(&map).await?;
+        } else {
+            return Err(CommandError("Unable to determine content-type.".into()));
+        }
+
     } else if args.is_empty() {
         p.avatar(None);
         let map = serenity::utils::hashmap_to_json_map(p.0);
         context.http.edit_profile(&map).await?;
     } else {
         let url = args.single::<String>()?;
-        let image = reqwest::get(&url).await?.bytes().await?;
-        p.avatar(Some(&base64::encode(image)));
-        let map = serenity::utils::hashmap_to_json_map(p.0);
-        context.http.edit_profile(&map).await?;
+        let response = reqwest::get(&url).await?;
+        let headers = response.headers().to_owned();
+        if let Some(content_type) = headers.get("Content-Type") {
+            let image = response.bytes().await?;
+            p.avatar(Some(&format!("data:{};base64,{}", content_type.to_str()?, &base64::encode(image))));
+            let map = serenity::utils::hashmap_to_json_map(p.0);
+            context.http.edit_profile(&map).await?;
+        } else {
+            return Err(CommandError("Unable to determine content-type.".into()));
+        }
     }
     Ok(())
 }
