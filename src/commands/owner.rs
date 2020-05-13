@@ -166,13 +166,16 @@ async fn setavatar(context: &Context, msg: &Message, mut args: Args) -> CommandR
         let headers = response.headers().to_owned();
         if let Some(content_type) = headers.get("Content-Type") {
             let image = response.bytes().await?;
-            p.avatar(Some(&format!("data:{};base64,{}", content_type.to_str()?, &base64::encode(image))));
+            p.avatar(Some(&format!(
+                "data:{};base64,{}",
+                content_type.to_str()?,
+                &base64::encode(image)
+            )));
             let map = serenity::utils::hashmap_to_json_map(p.0);
             context.http.edit_profile(&map).await?;
         } else {
             return Err(CommandError("Unable to determine content-type.".into()));
         }
-
     } else if args.is_empty() {
         p.avatar(None);
         let map = serenity::utils::hashmap_to_json_map(p.0);
@@ -183,7 +186,11 @@ async fn setavatar(context: &Context, msg: &Message, mut args: Args) -> CommandR
         let headers = response.headers().to_owned();
         if let Some(content_type) = headers.get("Content-Type") {
             let image = response.bytes().await?;
-            p.avatar(Some(&format!("data:{};base64,{}", content_type.to_str()?, &base64::encode(image))));
+            p.avatar(Some(&format!(
+                "data:{};base64,{}",
+                content_type.to_str()?,
+                &base64::encode(image)
+            )));
             let map = serenity::utils::hashmap_to_json_map(p.0);
             context.http.edit_profile(&map).await?;
         } else {

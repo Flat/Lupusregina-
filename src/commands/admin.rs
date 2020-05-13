@@ -20,7 +20,7 @@ use serenity::framework::standard::{macros::command, Args, CommandError, Command
 use serenity::model::channel::Message;
 
 use crate::db;
-use crate::util::Prefixes;
+use crate::util::{DBPool, Prefixes};
 
 #[command]
 #[description = "Sets the prefix for the current Guild."]
@@ -29,6 +29,13 @@ use crate::util::Prefixes;
 async fn setprefix(context: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let arg = args.single::<String>().map_err(|_| "Arg.single was None")?;
     let guild_id = msg.guild_id.ok_or_else(|| "guild_id was None")?;
+    let pool = context
+        .data
+        .read()
+        .await
+        .get::<DBPool>()
+        .ok_or_else(|| "Unable to get DB Pool.")?
+        .clone();
     {
         let mut data = context.data.write().await;
         let prefixes = data
@@ -36,7 +43,9 @@ async fn setprefix(context: &Context, msg: &Message, mut args: Args) -> CommandR
             .ok_or_else(|| "Unable to get Prefix HashMap from context data.")?;
         prefixes.insert(*guild_id.as_u64(), arg.clone());
     }
-    db::set_guild_prefix(guild_id, arg).map_err(|e| e.to_string())?;
+    db::set_guild_prefix(&pool, guild_id, arg)
+        .await
+        .map_err(|e| e.to_string())?;
     msg.channel_id
         .say(context, "Set prefix!")
         .await

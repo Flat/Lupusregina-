@@ -33,7 +33,7 @@ async fn ban(context: &Context, msg: &Message) -> CommandResult {
                 .await
                 .member(context, msg.mentions[0].id)
                 .await?
-                .ban(context, &0u8)
+                .ban(context, 0u8)
                 .await?
         }
     } else {

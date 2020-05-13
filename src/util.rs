@@ -49,6 +49,12 @@ impl TypeMapKey for Prefixes {
     type Value = HashMap<u64, String>;
 }
 
+pub struct DBPool;
+
+impl TypeMapKey for DBPool {
+    type Value = Arc<sqlx::SqlitePool>;
+}
+
 pub fn get_project_dirs() -> Option<ProjectDirs> {
     ProjectDirs::from("moe.esoteric", "flat", "Lupusreginaβ")
 }

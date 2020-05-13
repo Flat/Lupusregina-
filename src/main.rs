@@ -190,7 +190,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let conf = get_configuration()?;
 
-    db::create_db();
+    let db_connection_pool = match db::create_db_and_pool().await {
+        Ok(pool) => pool,
+        Err(why) => panic!("Unable to open connection pool: {:?}", why),
+    };
 
     let http = Http::new_with_token(&token);
 
@@ -234,10 +237,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await
         .expect("Error creating client!");
 
-    let prefixes = db::get_all_prefixes().unwrap_or_else(|_| HashMap::<u64, String>::new());
+    let prefixes = db::get_all_prefixes(&db_connection_pool)
+        .await
+        .unwrap_or_else(|_| HashMap::<u64, String>::new());
     {
         let mut data = client.data.write().await;
         data.insert::<util::Config>(Arc::clone(&Arc::new(conf)));
+        data.insert::<util::DBPool>(Arc::clone(&Arc::new(db_connection_pool)));
         data.insert::<util::ClientShardManager>(Arc::clone(&client.shard_manager));
         data.insert::<util::Uptime>(HashMap::default());
         data.insert::<util::Prefixes>(prefixes);
