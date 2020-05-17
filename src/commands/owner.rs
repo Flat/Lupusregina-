@@ -54,13 +54,14 @@ async fn info(context: &Context, msg: &Message) -> CommandResult {
     };
 
     let (name, face, guilds, channels, users) = {
-        let cache = context.cache.read().await;
+        let cache = &context.cache;
+        let current_user = cache.current_user().await;
         (
-            cache.user.name.to_owned(),
-            cache.user.face(),
-            cache.guilds.len().to_string(),
-            cache.private_channels.len().to_string(),
-            cache.users.len(),
+            current_user.name.to_owned(),
+            current_user.face(),
+            cache.guilds().await.len().to_string(),
+            cache.private_channels().await.len().to_string(),
+            cache.users().await.len(),
         )
     };
 
@@ -114,9 +115,8 @@ async fn rename(context: &Context, _msg: &Message, mut args: Args) -> CommandRes
     let name = args.single_quoted::<String>()?;
     context
         .cache
-        .write()
+        .current_user()
         .await
-        .user
         .edit(&context, |p| p.username(name))
         .await
         .map_err(|e| CommandError(e.to_string()))

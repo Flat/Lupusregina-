@@ -150,8 +150,6 @@ async fn eightball(context: &Context, msg: &Message, args: Args) -> CommandResul
         if let Some(guild_id) = msg.guild_id {
             context
                 .cache
-                .read()
-                .await
                 .member(guild_id, msg.author.id)
                 .await
                 .and_then(|member| member.nick)

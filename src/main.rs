@@ -53,7 +53,7 @@ struct Handler;
 impl EventHandler for Handler {
     async fn cache_ready(&self, ctx: Context, guilds: Vec<GuildId>) {
         info!("Connected to {} guilds.", guilds.len());
-        let shard_messenger = ctx.shard.lock().await;
+        let shard_messenger = ctx.shard;
         shard_messenger.chunk_guilds(guilds, None, None);
     }
 

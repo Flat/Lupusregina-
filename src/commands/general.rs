@@ -27,12 +27,11 @@ use serenity::utils::Colour;
 #[description = "Shows information about the bot."]
 async fn about(context: &Context, msg: &Message) -> CommandResult {
     let (invite_url, face) = {
-        let face = context.cache.read().await.user.face();
+        let face = context.cache.current_user().await.face();
         match context
             .cache
-            .read()
+            .current_user()
             .await
-            .user
             .invite_url(
                 &context,
                 Permissions::READ_MESSAGES
@@ -88,8 +87,6 @@ async fn avatar(context: &Context, msg: &Message, args: Args) -> CommandResult {
                     .to_guild_cached(&context)
                     .await
                     .ok_or("Failed to get Guild from GuildId")?
-                    .read()
-                    .await
                     .members_starting_with(args.rest(), false, true)
                     .await
                     .first()
@@ -128,8 +125,6 @@ async fn userinfo(context: &Context, msg: &Message, args: Args) -> CommandResult
                 .to_guild_cached(&context)
                 .await
                 .ok_or("Failed to get Guild from GuildId")?
-                .read()
-                .await
                 .members_starting_with(args.rest(), false, true)
                 .await
                 .first()
@@ -179,10 +174,7 @@ async fn guildinfo(context: &Context, msg: &Message) -> CommandResult {
     let guild = guild_id
         .to_guild_cached(&context)
         .await
-        .ok_or("Failed to get Guild from GuildID")?
-        .read()
-        .await
-        .clone();
+        .ok_or("Failed to get Guild from GuildID")?;
 
     msg.channel_id
         .send_message(&context, move |m| {

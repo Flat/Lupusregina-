@@ -29,8 +29,6 @@ async fn ban(context: &Context, msg: &Message) -> CommandResult {
                 .to_guild_cached(&context)
                 .await
                 .ok_or("Failed to get Guild from GuildId")?
-                .read()
-                .await
                 .member(context, msg.mentions[0].id)
                 .await?
                 .ban(context, 0u8)
@@ -53,10 +51,7 @@ async fn unban(context: &Context, msg: &Message, args: Args) -> CommandResult {
         .ok_or("Failed to get GuildId from Message")?
         .to_guild_cached(&context)
         .await
-        .ok_or("Failed to get Guild from GuildId")?
-        .read()
-        .await
-        .clone();
+        .ok_or("Failed to get Guild from GuildId")?;
     let bans = guild.bans(context).await?;
 
     for banned in bans {
