@@ -16,7 +16,7 @@
 
 #![feature(try_blocks)]
 #![feature(async_closure)]
-extern crate env_logger;
+extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
 
@@ -25,6 +25,7 @@ use std::env;
 use std::sync::Arc;
 
 use chrono::Utc;
+use dotenv::dotenv;
 use serenity::async_trait;
 use serenity::framework::standard::{
     help_commands,
@@ -183,8 +184,8 @@ async fn dynamic_prefix(ctx: &Context, msg: &Message) -> Option<String> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    kankyo::load(true)?;
-    env_logger::init();
+    dotenv().expect("Failed to load .env file!");
+    pretty_env_logger::init();
 
     let token = env::var("BOT_TOKEN")?;
 

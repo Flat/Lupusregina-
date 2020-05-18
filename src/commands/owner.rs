@@ -17,6 +17,7 @@
 use std::sync::Arc;
 
 use chrono::Utc;
+use procfs::process::Process;
 use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
 use serenity::model::channel::Message;
 use serenity::model::user::OnlineStatus;
@@ -65,25 +66,52 @@ async fn info(context: &Context, msg: &Message) -> CommandResult {
         )
     };
 
+    let mut desc = String::from(format!(
+        "**Software version**: `{} - v{}`",
+        &crate::BOT_NAME,
+        &crate::VERSION
+    ));
+    desc.push_str(&format!("\n**Uptime**: `{}`", &uptime));
+
+    #[cfg(target_os = "linux")]
+    if let Ok(process) = Process::myself() {
+        if let Ok(page_size) = procfs::page_size(){
+            if let Ok(statm) = process.statm() {
+                desc.push_str(&format!(
+                    "\n**Memory Usage**: `{:.2}MB`",
+                    ((statm.resident * page_size as u64) - (statm.shared * page_size as u64)) as f64 / 1048576_f64
+                ));
+            }
+        }
+        if let Ok(ticks) = procfs::ticks_per_second() {
+            if let Ok(kstats) = procfs::KernelStats::new() {
+                let cpu_usage = 100
+                    * (((process.stat.utime
+                        + process.stat.stime
+                        + process.stat.cutime as u64
+                        + process.stat.cstime as u64)
+                        / ticks as u64)
+                        / (kstats.btime - (process.stat.starttime / ticks as u64)));
+                desc.push_str(&format!("\n**CPU Usage**: `{}%`", cpu_usage))
+            }
+        }
+    };
+
+    desc.push_str(&format!("\n**Guilds**: `{}`", guilds));
+    desc.push_str(&format!("\n**Users**: `{}`", users));
+    desc.push_str(&format!("\n**DM Channels**: `{}`", channels));
+
     msg.channel_id
         .send_message(context, |m| {
             m.embed(|e| {
                 e.colour(Colour::FABLED_PINK)
-                    .description(&format!(
-                        "Currently running {} - {}",
-                        &crate::BOT_NAME,
-                        &crate::VERSION
-                    ))
-                    .title("Running Information")
                     .author(|mut a| {
                         a = a.name(&name);
                         a = a.icon_url(&face);
                         a
                     })
-                    .field("Uptime", &uptime, false)
-                    .field("Guilds", guilds, false)
-                    .field("Private Channels", channels, false)
-                    .field("Users", users, false)
+                    .title("Running Information")
+                    .description(desc)
             })
         })
         .await
