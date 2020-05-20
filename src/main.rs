@@ -38,11 +38,12 @@ use serenity::model::id::UserId;
 use serenity::model::prelude::{GuildId, Message};
 use serenity::prelude::*;
 
-use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*, weeb::*};
+use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*, voice::*, weeb::*};
 use crate::util::{get_configuration, Prefixes};
 use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::framework::standard::DispatchError::Ratelimited;
 use serenity::http::Http;
+use serenity_lavalink::LavalinkClient;
 
 pub mod commands;
 pub mod db;
@@ -121,6 +122,10 @@ struct Moderation;
 #[commands(anime, manga, vtuber)]
 struct Weeb;
 
+#[group]
+#[commands(play, stop, nowplaying)]
+struct Voice;
+
 #[help]
 async fn my_help(
     context: &Context,
@@ -188,6 +193,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     pretty_env_logger::init();
 
     let token = env::var("BOT_TOKEN")?;
+    let lavalink_password = env::var("LAVALINK_PASS")?;
+    let lavalink_host = env::var("LAVALINK_HOST")?;
+    let lavalink_port = u16::from_str_radix(&env::var("LAVALINK_PORT")?, 10)?;
+    info!(
+        "Pass: {}, Port: {}, Host: {}.",
+        &lavalink_password, &lavalink_port, &lavalink_host
+    );
 
     let conf = get_configuration()?;
 
@@ -223,7 +235,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .group(&ADMIN_GROUP)
         .group(&OWNER_GROUP)
         .group(&MODERATION_GROUP)
-        .group(&WEEB_GROUP);
+        .group(&WEEB_GROUP)
+        .group(&VOICE_GROUP);
 
     let mut client = Client::new(&token)
         .event_handler(Handler)
@@ -233,7 +246,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 | GatewayIntents::DIRECT_MESSAGES
                 | GatewayIntents::GUILD_MESSAGES
                 | GatewayIntents::GUILDS
-                | GatewayIntents::GUILD_PRESENCES,
+                | GatewayIntents::GUILD_BANS
+                | GatewayIntents::GUILD_PRESENCES
+                | GatewayIntents::GUILD_VOICE_STATES,
         )
         .await
         .expect("Error creating client!");
@@ -241,8 +256,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let prefixes = db::get_all_prefixes(&db_connection_pool)
         .await
         .unwrap_or_else(|_| HashMap::<u64, String>::new());
+    let mut lava_client = LavalinkClient::new();
+    lava_client.bot_id = bot_id;
+    lava_client.host = lavalink_host;
+    lava_client.password = lavalink_password;
+    lava_client.port = lavalink_port;
+    lava_client.initialize().await?;
     {
         let mut data = client.data.write().await;
+        data.insert::<util::VoiceManager>(Arc::clone(&client.voice_manager));
+        data.insert::<util::Lavalink>(Arc::new(RwLock::new(lava_client)));
         data.insert::<util::Config>(Arc::clone(&Arc::new(conf)));
         data.insert::<util::DBPool>(Arc::clone(&Arc::new(db_connection_pool)));
         data.insert::<util::ClientShardManager>(Arc::clone(&client.shard_manager));

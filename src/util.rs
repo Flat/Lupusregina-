@@ -14,16 +14,16 @@
  *    limitations under the License.
  */
 
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use chrono::DateTime;
 use chrono::Utc;
 use directories::ProjectDirs;
 use ini::Ini;
-use serenity::client::bridge::gateway::ShardManager;
-use serenity::prelude::{Mutex, TypeMapKey};
+use serenity::client::bridge::{gateway::ShardManager, voice::ClientVoiceManager};
+use serenity::prelude::{Mutex, RwLock, TypeMapKey};
+use serenity_lavalink::LavalinkClient;
+use std::collections::HashMap;
 use std::fs;
+use std::sync::Arc;
 
 pub struct Config;
 
@@ -53,6 +53,18 @@ pub struct DBPool;
 
 impl TypeMapKey for DBPool {
     type Value = Arc<sqlx::SqlitePool>;
+}
+
+pub struct VoiceManager;
+
+impl TypeMapKey for VoiceManager {
+    type Value = Arc<Mutex<ClientVoiceManager>>;
+}
+
+pub struct Lavalink;
+
+impl TypeMapKey for Lavalink {
+    type Value = Arc<RwLock<LavalinkClient>>;
 }
 
 pub fn get_project_dirs() -> Option<ProjectDirs> {

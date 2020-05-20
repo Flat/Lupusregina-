@@ -1,13 +1,13 @@
 [package]
 name = "lupusreginaβ"
-version = "0.4.10"
+version = "0.4.11"
 authors = ["Ken Swenson <flat@esoteric.moe>"]
 license = "Apache-2.0"
 edition = "2018"
 
 [dependencies]
 base64 = "0.12.0"
-chrono = "0.4.10"
+chrono = "0.4"
 directories = "~2.0"
 pretty_env_logger = "~0.4"
 log = "~0.4"
@@ -36,6 +36,10 @@ git = "https://github.com/Lakelezz/serenity"
 branch = "await"
 #path = "../serenity"
 features = ["framework", "standard_framework", "absolute_ratelimits"]
+
+[dependencies.serenity-lavalink]
+git = "https://gitlab.com/nitsuga5124/serenity-lavalink/"
+branch = "master"
 
 [dependencies.reqwest]
 version = "0.10"

@@ -75,11 +75,13 @@ async fn info(context: &Context, msg: &Message) -> CommandResult {
 
     #[cfg(target_os = "linux")]
     if let Ok(process) = Process::myself() {
-        if let Ok(page_size) = procfs::page_size(){
+        if let Ok(page_size) = procfs::page_size() {
             if let Ok(statm) = process.statm() {
                 desc.push_str(&format!(
                     "\n**Memory Usage**: `{:.2}MB`",
-                    ((statm.resident * page_size as u64) - (statm.shared * page_size as u64)) as f64 / 1048576_f64
+                    ((statm.resident * page_size as u64) - (statm.shared * page_size as u64))
+                        as f64
+                        / 1048576_f64
                 ));
             }
         }

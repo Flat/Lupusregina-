@@ -25,6 +25,7 @@ use crate::util::{DBPool, Prefixes};
 #[command]
 #[description = "Sets the prefix for the current Guild."]
 #[owner_privilege]
+#[only_in("guilds")]
 #[required_permissions("ADMINISTRATOR")]
 async fn setprefix(context: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let arg = args.single::<String>().map_err(|_| "Arg.single was None")?;
