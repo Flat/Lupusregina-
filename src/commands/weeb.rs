@@ -17,7 +17,7 @@
 use chrono::Utc;
 use graphql_client::{GraphQLQuery, Response};
 use serde::Deserialize;
-use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
+use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::channel::Message;
 use serenity::prelude::Context;
 use serenity::utils::Colour;
@@ -157,8 +157,8 @@ async fn anime(context: &Context, msg: &Message, args: Args) -> CommandResult {
                 e
             })
         })
-        .await
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        .await?;
+    Ok(())
 }
 
 #[command]
@@ -264,13 +264,13 @@ async fn manga(context: &Context, msg: &Message, args: Args) -> CommandResult {
                 e
             })
         })
-        .await
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        .await?;
+    Ok(())
 }
 
 async fn anime_query(
     variables: anime_query::Variables,
-) -> Result<Response<anime_query::ResponseData>, failure::Error> {
+) -> Result<Response<anime_query::ResponseData>, Box<dyn std::error::Error + Send + Sync>> {
     let request_body = AnimeQuery::build_query(variables);
     let client = ReqwestClient::new();
     let res = client
@@ -283,7 +283,7 @@ async fn anime_query(
 
 async fn manga_query(
     variables: manga_query::Variables,
-) -> Result<Response<manga_query::ResponseData>, failure::Error> {
+) -> Result<Response<manga_query::ResponseData>, Box<dyn std::error::Error + Send + Sync>> {
     let request_body = MangaQuery::build_query(variables);
     let client = ReqwestClient::new();
     let res = client
@@ -369,13 +369,13 @@ async fn vtuber(context: &Context, msg: &Message, args: Args) -> CommandResult {
                 e
             })
         })
-        .await
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        .await?;
+    Ok(())
 }
 
 async fn search_vtuber_wiki(
     search: String,
-) -> Result<LocalWikiSearchResult, Box<dyn std::error::Error>> {
+) -> Result<LocalWikiSearchResult, Box<dyn std::error::Error + Send + Sync>> {
     let client = ReqwestClient::new();
     let results: LocalWikiSearchResultSet = client
         .get(VIRTUALYOUTUBER_WIKI_SEARCH)
@@ -393,7 +393,7 @@ async fn search_vtuber_wiki(
 
 async fn get_vtuber_article_details(
     id: u64,
-) -> Result<ExpandedArticle, Box<dyn std::error::Error>> {
+) -> Result<ExpandedArticle, Box<dyn std::error::Error + Send + Sync>> {
     let client = ReqwestClient::new();
     let results: ExpandedArticleResultSet = client
         .get(VIRTUALYOUTUBER_WIKI_DETAILS)

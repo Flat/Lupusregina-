@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
+use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::channel::Message;
 use serenity::prelude::Context;
 
@@ -35,9 +35,7 @@ async fn ban(context: &Context, msg: &Message) -> CommandResult {
                 .await?
         }
     } else {
-        Err(serenity::framework::standard::CommandError(String::from(
-            "No mentioned target.",
-        )))
+        Err("No mentioned target.".into())
     }
 }
 
@@ -70,6 +68,6 @@ async fn setslowmode(context: &Context, msg: &Message, mut args: Args) -> Comman
     let seconds = &args.single::<u64>()?;
     msg.channel_id
         .edit(context, |c| c.slow_mode_rate(*seconds))
-        .await
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        .await?;
+    Ok(())
 }

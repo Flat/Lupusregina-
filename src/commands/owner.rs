@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use chrono::Utc;
 use procfs::process::Process;
-use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
+use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::channel::Message;
 use serenity::model::user::OnlineStatus;
 use serenity::prelude::Context;
@@ -116,8 +116,8 @@ async fn info(context: &Context, msg: &Message) -> CommandResult {
                     .description(desc)
             })
         })
-        .await
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        .await?;
+    Ok(())
 }
 
 #[command]
@@ -130,10 +130,8 @@ async fn reload(context: &Context, msg: &Message) -> CommandResult {
             .ok_or("Failed to read config from Client Data")?;
         *data_conf = Arc::new(conf);
     }
-    msg.channel_id
-        .say(context, "Reloaded config!")
-        .await
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+    msg.channel_id.say(context, "Reloaded config!").await?;
+    Ok(())
 }
 
 #[command]
@@ -148,8 +146,8 @@ async fn rename(context: &Context, _msg: &Message, mut args: Args) -> CommandRes
         .current_user()
         .await
         .edit(&context, |p| p.username(name))
-        .await
-        .map_err(|e| CommandError(e.to_string()))
+        .await?;
+    Ok(())
 }
 
 #[command]
@@ -164,7 +162,7 @@ async fn nickname(context: &Context, msg: &Message, mut args: Args) -> CommandRe
                 .http
                 .edit_nickname(guild_id.0, None)
                 .await
-                .map_err(|e| CommandError(e.to_string()))?
+                .map_err(|e| e.to_string())?
         }
     } else {
         let nick = args.single_quoted::<String>()?;
@@ -173,7 +171,7 @@ async fn nickname(context: &Context, msg: &Message, mut args: Args) -> CommandRe
                 .http
                 .edit_nickname(guild_id.0, Some(&nick))
                 .await
-                .map_err(|e| CommandError(e.to_string()))?
+                .map_err(|e| e.to_string())?
         }
     }
 
@@ -204,7 +202,7 @@ async fn setavatar(context: &Context, msg: &Message, mut args: Args) -> CommandR
             let map = serenity::utils::hashmap_to_json_map(p.0);
             context.http.edit_profile(&map).await?;
         } else {
-            return Err(CommandError("Unable to determine content-type.".into()));
+            return Err("Unable to determine content-type.".into());
         }
     } else if args.is_empty() {
         p.avatar(None);
@@ -224,7 +222,7 @@ async fn setavatar(context: &Context, msg: &Message, mut args: Args) -> CommandR
             let map = serenity::utils::hashmap_to_json_map(p.0);
             context.http.edit_profile(&map).await?;
         } else {
-            return Err(CommandError("Unable to determine content-type.".into()));
+            return Err("Unable to determine content-type.".into());
         }
     }
     Ok(())

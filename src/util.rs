@@ -14,6 +14,8 @@
  *    limitations under the License.
  */
 
+use anyhow::anyhow;
+use anyhow::Result;
 use chrono::DateTime;
 use chrono::Utc;
 use directories::ProjectDirs;
@@ -71,14 +73,14 @@ pub fn get_project_dirs() -> Option<ProjectDirs> {
     ProjectDirs::from("moe.esoteric", "flat", "Lupusreginaβ")
 }
 
-pub fn get_configuration() -> Result<Ini, Box<dyn std::error::Error>> {
-    let project_dirs = get_project_dirs().ok_or("Failed to get proejct directories!")?;
+pub fn get_configuration() -> Result<Ini> {
+    let project_dirs = get_project_dirs().ok_or(anyhow!("Failed to get proejct directories!"))?;
     let config_path = project_dirs.config_dir().join("settings.ini");
     if !config_path.exists() {
         fs::create_dir_all(
             &config_path
                 .parent()
-                .ok_or("Failed to get parent of path!")?,
+                .ok_or(anyhow!("Failed to get parent of path!"))?,
         )?;
         fs::File::create(&config_path)?;
     }

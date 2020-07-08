@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
+use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::channel::Message;
 use serenity::prelude::Context;
 use serenity_lavalink::nodes::Node;
@@ -41,7 +41,7 @@ async fn play(context: &Context, msg: &Message, args: Args) -> CommandResult {
         None => {
             msg.reply(context, "You need to be in a voice channel!")
                 .await?;
-            return Err(CommandError("User not in voice channel.".into()));
+            return Err("User not in voice channel.".into());
         }
     };
 
@@ -64,7 +64,7 @@ async fn play(context: &Context, msg: &Message, args: Args) -> CommandResult {
                     msg.channel_id
                         .say(context, "The bot is already in use in a voice channel.")
                         .await?;
-                    return Err(CommandError("Bot already in voice channel.".into()));
+                    return Err("Bot already in voice channel.".into());
                 }
             }
         }
@@ -114,10 +114,7 @@ async fn play(context: &Context, msg: &Message, args: Args) -> CommandResult {
                 "Could not find any results matching the search query.",
             )
             .await?;
-        return Err(CommandError(format!(
-            "No results found from query: {}",
-            &query
-        )));
+        return Err(format!("No results found from query: {}", &query).into());
     }
 
     {
@@ -151,9 +148,7 @@ async fn play(context: &Context, msg: &Message, args: Args) -> CommandResult {
 #[command]
 #[only_in("guilds")]
 async fn stop(context: &Context, msg: &Message) -> CommandResult {
-    let guild_id = msg
-        .guild_id
-        .ok_or(CommandError("GuildId not found from message.".into()))?;
+    let guild_id = msg.guild_id.ok_or("GuildId not found from message.")?;
 
     let voice_manager_lock = context
         .data
@@ -185,7 +180,7 @@ async fn stop(context: &Context, msg: &Message) -> CommandResult {
             node.destroy(&mut lava_client, &guild_id).await?;
         }
     } else {
-        return Err(CommandError("Bot not currently in voice channel.".into()));
+        return Err("Bot not currently in voice channel.".into());
     }
 
     Ok(())
@@ -195,9 +190,7 @@ async fn stop(context: &Context, msg: &Message) -> CommandResult {
 #[only_in("guilds")]
 #[aliases("np")]
 async fn nowplaying(context: &Context, msg: &Message) -> CommandResult {
-    let guild_id = msg
-        .guild_id
-        .ok_or(CommandError("GuildId not found from message.".into()))?;
+    let guild_id = msg.guild_id.ok_or("GuildId not found from message.")?;
 
     let data = context.data.read().await;
 

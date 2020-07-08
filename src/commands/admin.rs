@@ -15,7 +15,7 @@
  */
 
 use serenity::client::Context;
-use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
+use serenity::framework::standard::{macros::command, Args, CommandResult};
 
 use serenity::model::channel::Message;
 
@@ -47,8 +47,6 @@ async fn setprefix(context: &Context, msg: &Message, mut args: Args) -> CommandR
     db::set_guild_prefix(&pool, guild_id, arg)
         .await
         .map_err(|e| e.to_string())?;
-    msg.channel_id
-        .say(context, "Set prefix!")
-        .await
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+    msg.channel_id.say(context, "Set prefix!").await?;
+    Ok(())
 }

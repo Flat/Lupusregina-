@@ -19,7 +19,7 @@ use core::fmt;
 use chrono::{Date, Datelike, Local};
 use rand::prelude::*;
 use serenity::client::Context;
-use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
+use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::channel::Message;
 use serenity::utils::Colour;
 
@@ -184,8 +184,8 @@ async fn eightball(context: &Context, msg: &Message, args: Args) -> CommandResul
                 .field("🎱Eightball🎱", choice, false)
             })
         })
-        .await
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        .await?;
+    Ok(())
 }
 
 #[command]
@@ -196,10 +196,8 @@ async fn darksouls(context: &Context, msg: &Message, _args: Args) -> CommandResu
     let template = DS1TEMPLATES[rng.gen_range(0, DS1TEMPLATES.len())];
     let filler = DS1FILLERS[rng.gen_range(0, DS1FILLERS.len())];
     let message = template.replace("{}", filler);
-    msg.channel_id
-        .say(&context, message)
-        .await
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+    msg.channel_id.say(&context, message).await?;
+    Ok(())
 }
 
 #[command]
@@ -207,7 +205,7 @@ async fn darksouls(context: &Context, msg: &Message, _args: Args) -> CommandResu
 #[aliases("ds3")]
 async fn darksouls3(context: &Context, msg: &Message, _args: Args) -> CommandResult {
     let mut rng = rand::rngs::StdRng::from_entropy();
-    let has_conjunction = rng.gen_range(0, 2);
+    let has_conjunction: u8 = rng.gen_range(0, 2);
     if has_conjunction == 1 {
         let conjunction = DS3CONJUNCTIONS[rng.gen_range(0, DS3CONJUNCTIONS.len())];
         let mut message: String = String::new();
@@ -232,18 +230,14 @@ async fn darksouls3(context: &Context, msg: &Message, _args: Args) -> CommandRes
                 );
             }
         }
-        msg.channel_id
-            .say(&context, message)
-            .await
-            .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        msg.channel_id.say(&context, message).await?;
+        Ok(())
     } else {
         let template = DS3TEMPLATES[rng.gen_range(0, DS3TEMPLATES.len())];
         let filler = DS3FILLERS[rng.gen_range(0, DS3FILLERS.len())];
         let message = template.replace("{}", filler);
-        msg.channel_id
-            .say(&context, message)
-            .await
-            .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        msg.channel_id.say(&context, message).await?;
+        Ok(())
     }
 }
 
@@ -252,7 +246,7 @@ async fn darksouls3(context: &Context, msg: &Message, _args: Args) -> CommandRes
 #[aliases("bb")]
 async fn bloodborne(context: &Context, msg: &Message, _args: Args) -> CommandResult {
     let mut rng = rand::rngs::StdRng::from_entropy();
-    let has_conjunction = rng.gen_range(0, 2);
+    let has_conjunction: u8 = rng.gen_range(0, 2);
     if has_conjunction == 1 {
         let conjunction = BBCONJUNCTIONS[rng.gen_range(0, BBCONJUNCTIONS.len())];
         let mut message: String = String::new();
@@ -277,18 +271,14 @@ async fn bloodborne(context: &Context, msg: &Message, _args: Args) -> CommandRes
                 );
             }
         }
-        msg.channel_id
-            .say(&context, message)
-            .await
-            .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        msg.channel_id.say(&context, message).await?;
+        Ok(())
     } else {
         let template = BBTEMPLATES[rng.gen_range(0, BBTEMPLATES.len())];
         let filler = BBFILLERS[rng.gen_range(0, BBFILLERS.len())];
         let message = template.replace("{}", filler);
-        msg.channel_id
-            .say(&context, message)
-            .await
-            .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        msg.channel_id.say(&context, message).await?;
+        Ok(())
     }
 }
 
@@ -298,10 +288,8 @@ async fn bloodborne(context: &Context, msg: &Message, _args: Args) -> CommandRes
 async fn ddate(context: &Context, msg: &Message, _args: Args) -> CommandResult {
     let today = Local::today();
     let message = Dday::from(today);
-    msg.channel_id
-        .say(&context, message)
-        .await
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+    msg.channel_id.say(&context, message).await?;
+    Ok(())
 }
 
 fn parse_int_ordinal_suffix(num: u32) -> &'static str {
