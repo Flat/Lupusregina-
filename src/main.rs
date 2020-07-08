@@ -197,10 +197,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let lavalink_password = env::var("LAVALINK_PASS")?;
     let lavalink_host = env::var("LAVALINK_HOST")?;
     let lavalink_port = u16::from_str_radix(&env::var("LAVALINK_PORT")?, 10)?;
-    info!(
-        "Pass: {}, Port: {}, Host: {}.",
-        &lavalink_password, &lavalink_port, &lavalink_host
-    );
 
     let conf = get_configuration()?;
 
