@@ -77,13 +77,14 @@ impl From<Date<Local>> for Dday {
         let year = date.year() + 1166;
         let mut day_of_year = date.ordinal0();
         let mut tibs_day = false;
-        if year % 4 == 0 && year % 100 != 0 || year % 400 == 0 {
+        if year % 4 == 0 && year % 100 != 0 || year % 100 == 0 && year % 400 == 0 {
             match day_of_year.cmp(&60) {
                 Ordering::Equal => tibs_day = true,
                 Ordering::Greater => day_of_year -= 1,
                 Ordering::Less => (),
             }
         };
+        day_of_year -= 1;
         let day_of_season = day_of_year % 73 + 1;
         Dday {
             year,
