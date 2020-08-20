@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Kenneth Swenson
+ * Copyright 2020 Kenneth Swenson
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -20,9 +20,8 @@ use chrono::DateTime;
 use chrono::Utc;
 use directories::ProjectDirs;
 use ini::Ini;
-use serenity::client::bridge::{gateway::ShardManager, voice::ClientVoiceManager};
-use serenity::prelude::{Mutex, RwLock, TypeMapKey};
-use serenity_lavalink::LavalinkClient;
+use serenity::client::bridge::gateway::ShardManager;
+use serenity::prelude::{Mutex, TypeMapKey};
 use std::collections::HashMap;
 use std::fs;
 use std::sync::Arc;
@@ -57,30 +56,19 @@ impl TypeMapKey for DBPool {
     type Value = Arc<sqlx::SqlitePool>;
 }
 
-pub struct VoiceManager;
-
-impl TypeMapKey for VoiceManager {
-    type Value = Arc<Mutex<ClientVoiceManager>>;
-}
-
-pub struct Lavalink;
-
-impl TypeMapKey for Lavalink {
-    type Value = Arc<RwLock<LavalinkClient>>;
-}
-
 pub fn get_project_dirs() -> Option<ProjectDirs> {
     ProjectDirs::from("moe.esoteric", "flat", "Lupusreginaβ")
 }
 
 pub fn get_configuration() -> Result<Ini> {
-    let project_dirs = get_project_dirs().ok_or(anyhow!("Failed to get proejct directories!"))?;
+    let project_dirs =
+        get_project_dirs().ok_or_else(|| anyhow!("Failed to get project directories!"))?;
     let config_path = project_dirs.config_dir().join("settings.ini");
     if !config_path.exists() {
         fs::create_dir_all(
             &config_path
                 .parent()
-                .ok_or(anyhow!("Failed to get parent of path!"))?,
+                .ok_or_else(|| anyhow!("Failed to get parent of path!"))?,
         )?;
         fs::File::create(&config_path)?;
     }

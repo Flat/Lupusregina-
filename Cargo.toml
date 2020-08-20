@@ -1,6 +1,6 @@
 [package]
 name = "lupusreginaβ"
-version = "0.4.14"
+version = "0.5.0"
 authors = ["Ken Swenson <flat@esoteric.moe>"]
 license = "Apache-2.0"
 edition = "2018"
@@ -20,27 +20,27 @@ tempfile = "3"
 graphql_client = "0.9"
 serde = "1.0"
 serde_json = "1.0"
-tokio = "0.2.21"
+tokio = "0.2.22"
 lazy_static = "1.4"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-procfs = "0.7"
+procfs = "0.8"
 
 [dependencies.sqlx]
-version = "0.3.4"
+version = "0.3.5"
 default-features = false
 features = ["sqlite", "runtime-tokio", "macros"]
 
 [dependencies.serenity]
-git = "https://github.com/acdenisSK/serenity"
-branch = "await_next"
+git = "https://github.com/serenity-rs/serenity"
+branch = "next"
 #path = "../serenity"
-features = ["framework", "standard_framework", "absolute_ratelimits", "rustls_backend"]
+features = ["framework", "standard_framework", "absolute_ratelimits", "rustls_backend", "voice"]
 
-[dependencies.serenity-lavalink]
+[dependencies.lavalink-rs]
 #path = "../serenity-lavalink"
-git = "https://gitlab.com/nitsuga5124/serenity-lavalink/"
-branch = "master"
+git = "https://gitlab.com/nitsuga5124/lavalink-rs/"
+branch = "serenity_next"
 
 [dependencies.reqwest]
 version = "0.10"

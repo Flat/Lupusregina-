@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Kenneth Swenson
+ * Copyright 2020 Kenneth Swenson
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ use serenity::framework::standard::{
     macros::{group, help, hook},
     Args, CommandGroup, CommandResult, DispatchError, HelpOptions, StandardFramework,
 };
-use serenity::model::event::ResumedEvent;
+use serenity::model::event::{ResumedEvent, VoiceServerUpdateEvent};
 use serenity::model::gateway::Ready;
 use serenity::model::id::UserId;
 use serenity::model::prelude::{GuildId, Message};
@@ -40,10 +40,10 @@ use serenity::prelude::*;
 
 use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*, voice::*, weeb::*};
 use crate::util::{get_configuration, Prefixes};
+use lavalink_rs::LavalinkClient;
 use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::framework::standard::DispatchError::Ratelimited;
 use serenity::http::Http;
-use serenity_lavalink::LavalinkClient;
 
 pub mod commands;
 pub mod db;
@@ -78,6 +78,21 @@ impl EventHandler for Handler {
             }
             None => error!("Unable to insert boot time into client data."),
         };
+    }
+
+    async fn voice_server_update(&self, ctx: Context, voice: VoiceServerUpdateEvent) {
+        if let Some(guild_id) = voice.guild_id {
+            let data = ctx.data.read().await;
+            let voice_server_lock = match data.get::<VoiceGuildUpdate>() {
+                Some(vgu) => vgu,
+                None => {
+                    error!("Unable to get VoiceGuildUpdate from data.");
+                    return;
+                }
+            };
+            let mut voice_server = voice_server_lock.write().await;
+            voice_server.insert(guild_id.0.into());
+        }
     }
 
     async fn resume(&self, _: Context, _: ResumedEvent) {
@@ -253,16 +268,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let prefixes = db::get_all_prefixes(&db_connection_pool)
         .await
         .unwrap_or_else(|_| HashMap::<u64, String>::new());
-    let mut lava_client = LavalinkClient::new();
-    lava_client.bot_id = bot_id;
-    lava_client.host = lavalink_host;
-    lava_client.password = lavalink_password;
-    lava_client.port = lavalink_port;
-    lava_client.initialize().await?;
+    let mut lava_client = LavalinkClient::new(bot_id.0);
+    lava_client.set_host(lavalink_host);
+    lava_client.set_password(lavalink_password);
+    lava_client.set_port(lavalink_port);
+    let lava_client = lava_client.initialize(LavalinkHandler).await?;
     {
         let mut data = client.data.write().await;
-        data.insert::<util::VoiceManager>(Arc::clone(&client.voice_manager));
-        data.insert::<util::Lavalink>(Arc::new(RwLock::new(lava_client)));
+        data.insert::<VoiceManager>(Arc::clone(&client.voice_manager));
+        data.insert::<VoiceGuildUpdate>(Arc::new(RwLock::new(HashSet::new())));
+        data.insert::<Lavalink>(lava_client);
         data.insert::<util::Config>(Arc::clone(&Arc::new(conf)));
         data.insert::<util::DBPool>(Arc::clone(&Arc::new(db_connection_pool)));
         data.insert::<util::ClientShardManager>(Arc::clone(&client.shard_manager));

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Kenneth Swenson
+ * Copyright 2020 Kenneth Swenson
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -39,10 +39,9 @@ pub async fn create_db_and_pool() -> Result<SqlitePool, Box<dyn Error>> {
                 Err(e) => error!("Error creating data directory: {}", e),
             }
         }
-        let db_as_str = &db.to_str().map_or_else(
-            || Err("Unable to convert database path to UTF-8 string."),
-            |db_string| Ok(db_string),
-        )?;
+        let db_as_str = &db
+            .to_str()
+            .ok_or("Unable to convert database path to UTF-8 string.")?;
         let pool = SqlitePool::new(&format!("sqlite://{}", db_as_str)).await?;
         match sqlx::query(
             "CREATE TABLE IF NOT EXISTS Prefix (guild_id TEXT PRIMARY KEY, prefix TEXT);",

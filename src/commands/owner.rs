@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Kenneth Swenson
+ * Copyright 2020 Kenneth Swenson
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -54,23 +54,19 @@ async fn info(context: &Context, msg: &Message) -> CommandResult {
         }
     };
 
-    let (name, face, guilds, channels, users) = {
-        let cache = &context.cache;
-        let current_user = cache.current_user().await;
-        (
-            current_user.name.to_owned(),
-            current_user.face(),
-            cache.guilds().await.len().to_string(),
-            cache.private_channels().await.len().to_string(),
-            cache.users().await.len(),
-        )
-    };
+    let cache = &context.cache;
+    let current_user = cache.current_user().await;
+    let name = current_user.name.to_owned();
+    let face = current_user.face();
+    let guilds = cache.guilds().await.len().to_string();
+    let channels = cache.private_channels().await.len().to_string();
+    let users = cache.users().await.len();
 
-    let mut desc = String::from(format!(
+    let mut desc = format!(
         "**Software version**: `{} - v{}`",
         &crate::BOT_NAME,
         &crate::VERSION
-    ));
+    );
     desc.push_str(&format!("\n**Uptime**: `{}`", &uptime));
 
     #[cfg(target_os = "linux")]

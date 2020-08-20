@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Kenneth Swenson
+ * Copyright 2020 Kenneth Swenson
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -14,12 +14,46 @@
  *    limitations under the License.
  */
 
+use lavalink_rs::{gateway::*, model::*, LavalinkClient};
 use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::channel::Message;
-use serenity::prelude::Context;
-use serenity_lavalink::nodes::Node;
+use serenity::{
+    async_trait,
+    client::bridge::voice::ClientVoiceManager,
+    prelude::{Context, Mutex, RwLock, TypeMapKey},
+};
 use std::sync::Arc;
-use std::time::Duration;
+use std::{collections::HashSet, time::Duration};
+
+pub struct VoiceManager;
+
+impl TypeMapKey for VoiceManager {
+    type Value = Arc<Mutex<ClientVoiceManager>>;
+}
+
+pub struct Lavalink;
+
+impl TypeMapKey for Lavalink {
+    type Value = Arc<Mutex<LavalinkClient>>;
+}
+
+pub struct VoiceGuildUpdate;
+
+impl TypeMapKey for VoiceGuildUpdate {
+    type Value = Arc<RwLock<HashSet<GuildId>>>;
+}
+
+pub struct LavalinkHandler;
+
+#[async_trait]
+impl LavalinkEventHandler for LavalinkHandler {
+    async fn track_start(&self, _client: Arc<Mutex<LavalinkClient>>, event: TrackStart) {
+        println!("Track started!\nGuild: {}", event.guild_id);
+    }
+    async fn track_finish(&self, _client: Arc<Mutex<LavalinkClient>>, event: TrackFinish) {
+        println!("Track finished!\nGuild: {}", event.guild_id);
+    }
+}
 
 #[command]
 #[only_in("guilds")]
@@ -51,7 +85,7 @@ async fn play(context: &Context, msg: &Message, args: Args) -> CommandResult {
         .data
         .read()
         .await
-        .get::<crate::util::VoiceManager>()
+        .get::<VoiceManager>()
         .cloned()
         .ok_or("Unable to get VoiceManager from data.")?;
 
@@ -88,22 +122,13 @@ async fn play(context: &Context, msg: &Message, args: Args) -> CommandResult {
         tokio::time::delay_for(tokio::time::Duration::from_millis(500)).await;
     }
 
-    let mut voice_manager = voice_manager_lock.lock().await;
-    let handler = voice_manager
-        .get_mut(&guild_id)
-        .ok_or("Unable to get voice handler.")?;
-
     let data = context.data.read().await;
 
     let lava_lock = data
-        .get::<crate::util::Lavalink>()
+        .get::<Lavalink>()
         .ok_or("Unable to get Lavalink client from data.")?;
 
-    let mut lava_client = lava_lock.write().await;
-
-    if lava_client.nodes.get(&guild_id).is_none() {
-        Node::new(&mut lava_client, guild_id, msg.channel_id);
-    }
+    let mut lava_client = lava_lock.lock().await;
 
     let query_info = lava_client.auto_search_tracks(&query).await?;
 
@@ -116,30 +141,20 @@ async fn play(context: &Context, msg: &Message, args: Args) -> CommandResult {
             .await?;
         return Err(format!("No results found from query: {}", &query).into());
     }
+    let handler = voice_manager_lock.lock().await.get(&guild_id).ok_or("Unable to get voice handler.")?.clone();
+    lava_client.create_session(guild_id, &handler).await?;
 
-    {
-        let node = lava_client
-            .nodes
-            .get_mut(&guild_id)
-            .ok_or("Unable to get lavalink client node!")?;
-        node.play(query_info.tracks[0].clone()).queue();
-    }
+    drop(lava_client);
 
-    let node = lava_client
-        .nodes
-        .get(&guild_id)
-        .ok_or("Unable to get lavalink client node!")?;
-
-    if !lava_client.loops.contains(&guild_id) {
-        node.start_loop(Arc::clone(lava_lock), Arc::new(handler.clone()))
-            .await;
-    }
-
+    LavalinkClient::play(guild_id.0, query_info.tracks[0].clone())
+        .queue(Arc::clone(lava_lock))
+        .await?;
+    let track_title = match query_info.tracks[0].info.as_ref() {
+        Some(info) => info.title.clone(),
+        None => "Unknown".into(),
+    };
     msg.channel_id
-        .say(
-            context,
-            format!("Added {} to the queue!", query_info.tracks[0].info.title),
-        )
+        .say(context, format!("Added {} to the queue!", track_title))
         .await?;
 
     Ok(())
@@ -154,7 +169,7 @@ async fn stop(context: &Context, msg: &Message) -> CommandResult {
         .data
         .read()
         .await
-        .get::<crate::util::VoiceManager>()
+        .get::<VoiceManager>()
         .cloned()
         .ok_or("Unable to get VoiceManager from data.")?;
 
@@ -166,18 +181,10 @@ async fn stop(context: &Context, msg: &Message) -> CommandResult {
             let data = context.data.read().await;
 
             let lava_client_lock = data
-                .get::<crate::util::Lavalink>()
+                .get::<Lavalink>()
                 .ok_or("Unable to get Lavalink client from data.")?;
 
-            let mut lava_client = lava_client_lock.write().await;
-
-            let node = lava_client
-                .nodes
-                .get(&guild_id)
-                .ok_or("Unable to get associated Lavalink node.")?
-                .clone();
-
-            node.destroy(&mut lava_client, &guild_id).await?;
+            lava_client_lock.lock().await.destroy(guild_id.0).await?;
         }
     } else {
         return Err("Bot not currently in voice channel.".into());
@@ -195,27 +202,28 @@ async fn nowplaying(context: &Context, msg: &Message) -> CommandResult {
     let data = context.data.read().await;
 
     let lava_client_lock = data
-        .get::<crate::util::Lavalink>()
+        .get::<Lavalink>()
         .ok_or("Unable to get Lavalink client from data.")?;
 
-    let lava_client = lava_client_lock.read().await;
+    let lava_client = lava_client_lock.lock().await;
 
-    if let Some(node) = lava_client.nodes.get(&guild_id) {
-        let track = node.now_playing.as_ref();
+    if let Some(node) = lava_client.nodes.get(&guild_id.0) {
+        let track = &node.now_playing;
 
         if let Some(x) = track {
-            let track_len = Duration::from_millis(x.track.info.length as u64);
-
-            let track_pos = track_len
-                - node
-                    .now_playing_time_left
-                    .unwrap_or(Duration::from_millis(0));
+            let track_info = x
+                .track
+                .info
+                .as_ref()
+                .ok_or("Could not obtain reference to track.info.")?;
+            let track_len = Duration::from_millis(track_info.length);
+            let track_pos = Duration::from_millis(track_info.position);
 
             msg.channel_id
                 .send_message(context, |m| {
                     m.embed(|e| {
-                        e.title(format!("{} by {}", x.track.info.title, x.track.info.author))
-                            .url(x.track.info.uri.clone())
+                        e.title(format!("{} by {}", track_info.title, track_info.author))
+                            .url(track_info.uri.clone())
                             .field(
                                 "Position",
                                 format!(
@@ -245,5 +253,5 @@ async fn nowplaying(context: &Context, msg: &Message) -> CommandResult {
 fn _parse_duration(duration: Duration) -> String {
     let seconds = duration.as_secs() % 60;
     let minutes = duration.as_secs() / 60;
-    format!("{}:{}", minutes, seconds)
+    format!("{}:{:02}", minutes, seconds)
 }
