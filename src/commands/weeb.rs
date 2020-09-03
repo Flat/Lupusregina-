@@ -30,7 +30,7 @@ use std::convert::TryFrom;
 #[graphql(
     schema_path = "src/anilist/schema.graphql",
     query_path = "src/anilist/AnimeQuery.graphql",
-    response_derives = "Debug"
+    response_derives = "Debug,Clone"
 )]
 struct AnimeQuery;
 
@@ -38,7 +38,7 @@ struct AnimeQuery;
 #[graphql(
     schema_path = "src/anilist/schema.graphql",
     query_path = "src/anilist/MangaQuery.graphql",
-    response_derives = "Debug"
+    response_derives = "Debug,Clone"
 )]
 struct MangaQuery;
 
@@ -66,7 +66,7 @@ async fn anime(context: &Context, msg: &Message, args: Args) -> CommandResult {
         .data
         .and_then(|data| {
             data.page
-                .and_then(|page| page.media.and_then(|mut media| media.remove(0)))
+                .and_then(|page| page.media.and_then(|media| media.first().cloned().map_or_else(|| None, |m| m)))
         })
         .ok_or_else(|| "Unable to get anime from response.")?;
     let id = anime.id;
@@ -177,7 +177,7 @@ async fn manga(context: &Context, msg: &Message, args: Args) -> CommandResult {
         .data
         .and_then(|data| {
             data.page
-                .and_then(|page| page.media.and_then(|mut media| media.remove(0)))
+                .and_then(|page| page.media.and_then(|media| media.first().cloned().map_or_else(|| None, |m| m)))
         })
         .ok_or_else(|| "Unable to get manga from response.")?;
     let id = manga.id;
