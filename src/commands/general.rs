@@ -22,6 +22,7 @@ use serenity::model::channel::Message;
 use serenity::model::permissions::Permissions;
 use serenity::prelude::Context;
 use serenity::utils::Colour;
+use tracing::error;
 
 #[command]
 #[description = "Shows information about the bot."]
@@ -110,7 +111,7 @@ async fn userinfo(context: &Context, msg: &Message, args: Args) -> CommandResult
     let guild_id = msg.guild_id.ok_or("Failed to get GuildID from Message.")?;
     let member = if msg.mentions.is_empty() {
         if args.is_empty() {
-            msg.member(&context).await.ok_or("Could not find member.")?
+            msg.member(&context).await?
         } else {
             (*(guild_id
                 .to_guild_cached(&context)

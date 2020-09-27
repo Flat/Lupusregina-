@@ -16,9 +16,6 @@
 
 #![feature(try_blocks)]
 #![feature(async_closure)]
-extern crate pretty_env_logger;
-#[macro_use]
-extern crate log;
 
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -44,6 +41,8 @@ use lavalink_rs::LavalinkClient;
 use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::framework::standard::DispatchError::Ratelimited;
 use serenity::http::Http;
+
+use tracing::{error, info};
 
 pub mod commands;
 pub mod db;
@@ -177,7 +176,7 @@ async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> (
             error!("{} failed: {:?}", msg.content, error);
             let _ = msg
                 .channel_id
-                .say(&ctx, format!("Ratelimited: Try again in {} seconds.", e));
+                .say(&ctx, format!("Ratelimited: Try again in {:#?} seconds.", e));
         }
         _ => error!("{} failed: {:?}", msg.content, error),
     }
@@ -206,7 +205,7 @@ async fn dynamic_prefix(ctx: &Context, msg: &Message) -> Option<String> {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().expect("Failed to load .env file!");
-    pretty_env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let token = env::var("BOT_TOKEN")?;
     let lavalink_password = env::var("LAVALINK_PASS")?;

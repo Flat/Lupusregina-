@@ -21,6 +21,7 @@ use sqlx::SqlitePool;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
+use tracing::error;
 
 #[derive(sqlx::FromRow)]
 struct PrefixRow {

@@ -65,8 +65,10 @@ async fn anime(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let anime = anime
         .data
         .and_then(|data| {
-            data.page
-                .and_then(|page| page.media.and_then(|media| media.first().cloned().map_or_else(|| None, |m| m)))
+            data.page.and_then(|page| {
+                page.media
+                    .and_then(|media| media.first().cloned().map_or_else(|| None, |m| m))
+            })
         })
         .ok_or_else(|| "Unable to get anime from response.")?;
     let id = anime.id;
@@ -176,8 +178,10 @@ async fn manga(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let manga = manga
         .data
         .and_then(|data| {
-            data.page
-                .and_then(|page| page.media.and_then(|media| media.first().cloned().map_or_else(|| None, |m| m)))
+            data.page.and_then(|page| {
+                page.media
+                    .and_then(|media| media.first().cloned().map_or_else(|| None, |m| m))
+            })
         })
         .ok_or_else(|| "Unable to get manga from response.")?;
     let id = manga.id;

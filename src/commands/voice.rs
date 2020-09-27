@@ -141,7 +141,12 @@ async fn play(context: &Context, msg: &Message, args: Args) -> CommandResult {
             .await?;
         return Err(format!("No results found from query: {}", &query).into());
     }
-    let handler = voice_manager_lock.lock().await.get(&guild_id).ok_or("Unable to get voice handler.")?.clone();
+    let handler = voice_manager_lock
+        .lock()
+        .await
+        .get(&guild_id)
+        .ok_or("Unable to get voice handler.")?
+        .clone();
     lava_client.create_session(guild_id, &handler).await?;
 
     drop(lava_client);
