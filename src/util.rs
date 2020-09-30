@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Kenneth Swenson
+ * Copyright 2020 Kenneth Swenson
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -14,54 +14,61 @@
  *    limitations under the License.
  */
 
-use std::collections::HashMap;
-use std::sync::Arc;
-
+use anyhow::anyhow;
+use anyhow::Result;
 use chrono::DateTime;
 use chrono::Utc;
 use directories::ProjectDirs;
 use ini::Ini;
 use serenity::client::bridge::gateway::ShardManager;
-use serenity::prelude::Mutex;
+use serenity::prelude::{Mutex, TypeMapKey};
+use std::collections::HashMap;
 use std::fs;
-use typemap::Key;
+use std::sync::Arc;
 
 pub struct Config;
 
-impl Key for Config {
+impl TypeMapKey for Config {
     type Value = Arc<Ini>;
 }
 
 pub struct Uptime;
 
-impl Key for Uptime {
+impl TypeMapKey for Uptime {
     type Value = HashMap<String, DateTime<Utc>>;
 }
 
 pub struct ClientShardManager;
 
-impl Key for ClientShardManager {
+impl TypeMapKey for ClientShardManager {
     type Value = Arc<Mutex<ShardManager>>;
 }
 
 pub struct Prefixes;
 
-impl Key for Prefixes {
+impl TypeMapKey for Prefixes {
     type Value = HashMap<u64, String>;
+}
+
+pub struct DBPool;
+
+impl TypeMapKey for DBPool {
+    type Value = Arc<sqlx::SqlitePool>;
 }
 
 pub fn get_project_dirs() -> Option<ProjectDirs> {
     ProjectDirs::from("moe.esoteric", "flat", "Lupusreginaβ")
 }
 
-pub fn get_configuration() -> Result<Ini, Box<dyn std::error::Error>> {
-    let project_dirs = get_project_dirs().ok_or("Failed to get proejct directories!")?;
+pub fn get_configuration() -> Result<Ini> {
+    let project_dirs =
+        get_project_dirs().ok_or_else(|| anyhow!("Failed to get project directories!"))?;
     let config_path = project_dirs.config_dir().join("settings.ini");
     if !config_path.exists() {
         fs::create_dir_all(
             &config_path
                 .parent()
-                .ok_or("Failed to get parent of path!")?,
+                .ok_or_else(|| anyhow!("Failed to get parent of path!"))?,
         )?;
         fs::File::create(&config_path)?;
     }

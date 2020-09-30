@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Kenneth Swenson
+ * Copyright 2020 Kenneth Swenson
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -17,7 +17,8 @@
 use std::sync::Arc;
 
 use chrono::Utc;
-use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
+use procfs::process::Process;
+use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::channel::Message;
 use serenity::model::user::OnlineStatus;
 use serenity::prelude::Context;
@@ -25,13 +26,11 @@ use serenity::utils::Colour;
 
 use crate::util;
 use serenity::model::prelude::{Activity, ActivityType};
-use std::fs::File;
-use std::io::copy;
 
 #[command]
-fn info(context: &mut Context, msg: &Message) -> CommandResult {
+async fn info(context: &Context, msg: &Message) -> CommandResult {
     let uptime = {
-        let data = context.data.read();
+        let data = context.data.read().await;
         match data.get::<util::Uptime>() {
             Some(time) => {
                 if let Some(boot_time) = time.get("boot") {
@@ -55,54 +54,80 @@ fn info(context: &mut Context, msg: &Message) -> CommandResult {
         }
     };
 
-    let (name, face, guilds, channels, users) = {
-        let cache = context.cache.read();
-        (
-            cache.user.name.to_owned(),
-            cache.user.face(),
-            cache.guilds.len().to_string(),
-            cache.private_channels.len().to_string(),
-            cache.users.len(),
-        )
+    let cache = &context.cache;
+    let current_user = cache.current_user().await;
+    let name = current_user.name.to_owned();
+    let face = current_user.face();
+    let guilds = cache.guilds().await.len().to_string();
+    let channels = cache.private_channels().await.len().to_string();
+    let users = cache.users().await.len();
+
+    let mut desc = format!(
+        "**Software version**: `{} - v{}`",
+        &crate::BOT_NAME,
+        &crate::VERSION
+    );
+    desc.push_str(&format!("\n**Uptime**: `{}`", &uptime));
+
+    #[cfg(target_os = "linux")]
+    if let Ok(process) = Process::myself() {
+        if let Ok(page_size) = procfs::page_size() {
+            if let Ok(statm) = process.statm() {
+                desc.push_str(&format!(
+                    "\n**Memory Usage**: `{:.2}MB`",
+                    ((statm.resident * page_size as u64) - (statm.shared * page_size as u64))
+                        as f64
+                        / 1048576_f64
+                ));
+            }
+        }
+        if let Ok(ticks) = procfs::ticks_per_second() {
+            if let Ok(kstats) = procfs::KernelStats::new() {
+                let cpu_usage = 100
+                    * (((process.stat.utime
+                        + process.stat.stime
+                        + process.stat.cutime as u64
+                        + process.stat.cstime as u64)
+                        / ticks as u64)
+                        / (kstats.btime - (process.stat.starttime / ticks as u64)));
+                desc.push_str(&format!("\n**CPU Usage**: `{}%`", cpu_usage))
+            }
+        }
     };
+
+    desc.push_str(&format!("\n**Guilds**: `{}`", guilds));
+    desc.push_str(&format!("\n**Users**: `{}`", users));
+    desc.push_str(&format!("\n**DM Channels**: `{}`", channels));
 
     msg.channel_id
         .send_message(context, |m| {
             m.embed(|e| {
                 e.colour(Colour::FABLED_PINK)
-                    .description(&format!(
-                        "Currently running {} - {}",
-                        &crate::BOT_NAME,
-                        &crate::VERSION
-                    ))
-                    .title("Running Information")
                     .author(|mut a| {
                         a = a.name(&name);
                         a = a.icon_url(&face);
                         a
                     })
-                    .field("Uptime", &uptime, false)
-                    .field("Guilds", guilds, false)
-                    .field("Private Channels", channels, false)
-                    .field("Users", users, false)
+                    .title("Running Information")
+                    .description(desc)
             })
         })
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        .await?;
+    Ok(())
 }
 
 #[command]
-fn reload(context: &mut Context, msg: &Message) -> CommandResult {
+async fn reload(context: &Context, msg: &Message) -> CommandResult {
     let conf = util::get_configuration()?;
     {
-        let mut data = context.data.write();
+        let mut data = context.data.write().await;
         let data_conf = data
             .get_mut::<crate::util::Config>()
             .ok_or("Failed to read config from Client Data")?;
         *data_conf = Arc::new(conf);
     }
-    msg.channel_id
-        .say(context, "Reloaded config!")
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+    msg.channel_id.say(context, "Reloaded config!").await?;
+    Ok(())
 }
 
 #[command]
@@ -110,14 +135,15 @@ fn reload(context: &mut Context, msg: &Message) -> CommandResult {
 #[usage = "\"<Username>\""]
 #[example = "\"Shalltear Bloodfallen\""]
 #[min_args(1)]
-fn rename(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResult {
+async fn rename(context: &Context, _msg: &Message, mut args: Args) -> CommandResult {
     let name = args.single_quoted::<String>()?;
     context
         .cache
-        .write()
-        .user
+        .current_user()
+        .await
         .edit(&context, |p| p.username(name))
-        .map_err(|e| CommandError(e.to_string()))
+        .await?;
+    Ok(())
 }
 
 #[command]
@@ -125,13 +151,14 @@ fn rename(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResul
 #[usage = "\"[<Username>]\""]
 #[example = "\"Shalltear Bloodfallen\""]
 #[only_in("guilds")]
-fn nickname(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+async fn nickname(context: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
         if let Some(guild_id) = msg.guild_id {
             context
                 .http
                 .edit_nickname(guild_id.0, None)
-                .map_err(|e| CommandError(e.to_string()))?
+                .await
+                .map_err(|e| e.to_string())?
         }
     } else {
         let nick = args.single_quoted::<String>()?;
@@ -139,7 +166,8 @@ fn nickname(context: &mut Context, msg: &Message, mut args: Args) -> CommandResu
             context
                 .http
                 .edit_nickname(guild_id.0, Some(&nick))
-                .map_err(|e| CommandError(e.to_string()))?
+                .await
+                .map_err(|e| e.to_string())?
         }
     }
 
@@ -150,7 +178,7 @@ fn nickname(context: &mut Context, msg: &Message, mut args: Args) -> CommandResu
 #[description = "(Un)sets the bot's avatar. Takes a url, nothing, or an attachment."]
 #[usage = "[<avatar_url>]"]
 #[example = "https://s4.anilist.co/file/anilistcdn/character/large/126870-DKc1B7cvoUu7.jpg"]
-fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+async fn setavatar(context: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let mut p = serenity::builder::EditProfile::default();
     if !msg.attachments.is_empty() {
         let url = &msg
@@ -158,77 +186,71 @@ fn setavatar(context: &mut Context, msg: &Message, mut args: Args) -> CommandRes
             .get(0)
             .ok_or_else(|| "Failed to get attachment")?
             .url;
-        let tmpdir = tempfile::tempdir()?;
-        let mut response = reqwest::blocking::get(url)?;
-        let (mut outfile, out_path) = {
-            let filename = response
-                .url()
-                .path_segments()
-                .and_then(|seg| seg.last())
-                .and_then(|name| if name.is_empty() { None } else { Some(name) })
-                .ok_or_else(|| "Failed to get filename from url.")?;
-            let filename = tmpdir.path().join(filename);
-            (File::create(filename.clone())?, filename)
-        };
-        copy(&mut response, &mut outfile)?;
-        let base64 = serenity::utils::read_image(out_path)?;
-        p.avatar(Some(&base64));
-        let map = serenity::utils::hashmap_to_json_map(p.0);
-        context.http.edit_profile(&map)?;
+        let response = reqwest::get(url).await?;
+        let headers = response.headers().to_owned();
+        if let Some(content_type) = headers.get("Content-Type") {
+            let image = response.bytes().await?;
+            p.avatar(Some(&format!(
+                "data:{};base64,{}",
+                content_type.to_str()?,
+                &base64::encode(image)
+            )));
+            let map = serenity::utils::hashmap_to_json_map(p.0);
+            context.http.edit_profile(&map).await?;
+        } else {
+            return Err("Unable to determine content-type.".into());
+        }
     } else if args.is_empty() {
         p.avatar(None);
         let map = serenity::utils::hashmap_to_json_map(p.0);
-        context.http.edit_profile(&map)?;
+        context.http.edit_profile(&map).await?;
     } else {
         let url = args.single::<String>()?;
-        let tmpdir = tempfile::tempdir()?;
-        let mut response = reqwest::blocking::get(&url)?;
-        let (mut outfile, outpath) = {
-            let filename = response
-                .url()
-                .path_segments()
-                .and_then(|seg| seg.last())
-                .and_then(|name| if name.is_empty() { None } else { Some(name) })
-                .ok_or_else(|| "Failed to get filename from url.")?;
-            let filename = tmpdir.path().join(filename);
-            (File::create(filename.clone())?, filename)
-        };
-        copy(&mut response, &mut outfile)?;
-        let base64 = serenity::utils::read_image(outpath)?;
-        p.avatar(Some(&base64));
-        let map = serenity::utils::hashmap_to_json_map(p.0);
-        context.http.edit_profile(&map)?;
+        let response = reqwest::get(&url).await?;
+        let headers = response.headers().to_owned();
+        if let Some(content_type) = headers.get("Content-Type") {
+            let image = response.bytes().await?;
+            p.avatar(Some(&format!(
+                "data:{};base64,{}",
+                content_type.to_str()?,
+                &base64::encode(image)
+            )));
+            let map = serenity::utils::hashmap_to_json_map(p.0);
+            context.http.edit_profile(&map).await?;
+        } else {
+            return Err("Unable to determine content-type.".into());
+        }
     }
     Ok(())
 }
 
 #[command]
-fn online(context: &mut Context, _msg: &Message) -> CommandResult {
-    context.online();
+async fn online(context: &Context, _msg: &Message) -> CommandResult {
+    context.online().await;
     Ok(())
 }
 
 #[command]
-fn idle(context: &mut Context, _msg: &Message) -> CommandResult {
-    context.idle();
+async fn idle(context: &Context, _msg: &Message) -> CommandResult {
+    context.idle().await;
     Ok(())
 }
 
 #[command]
-fn dnd(context: &mut Context, _msg: &Message) -> CommandResult {
-    context.dnd();
+async fn dnd(context: &Context, _msg: &Message) -> CommandResult {
+    context.dnd().await;
     Ok(())
 }
 
 #[command]
-fn invisible(context: &mut Context, _msg: &Message) -> CommandResult {
-    context.invisible();
+async fn invisible(context: &Context, _msg: &Message) -> CommandResult {
+    context.invisible().await;
     Ok(())
 }
 
 #[command]
-fn reset(context: &mut Context, _msg: &Message) -> CommandResult {
-    context.reset_presence();
+async fn reset(context: &Context, _msg: &Message) -> CommandResult {
+    context.reset_presence().await;
     Ok(())
 }
 
@@ -240,7 +262,7 @@ fn reset(context: &mut Context, _msg: &Message) -> CommandResult {
 #[usage = "<state> <activity> [<twitch url>] <status text>"]
 #[example = "online streaming https://twitch.tv/HeyZeusHeresToast Bloodborne"]
 #[min_args(3)]
-fn set(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResult {
+async fn set(context: &Context, _msg: &Message, mut args: Args) -> CommandResult {
     let status = match args.single::<String>()?.to_ascii_uppercase().as_ref() {
         "ONLINE" => OnlineStatus::Online,
         "IDLE" => OnlineStatus::Idle,
@@ -256,13 +278,21 @@ fn set(context: &mut Context, _msg: &Message, mut args: Args) -> CommandResult {
         _ => return Err("Invalid type".into()),
     };
     match kind {
-        ActivityType::Playing => context.set_presence(Some(Activity::playing(args.rest())), status),
+        ActivityType::Playing => {
+            context
+                .set_presence(Some(Activity::playing(args.rest())), status)
+                .await
+        }
         ActivityType::Listening => {
-            context.set_presence(Some(Activity::listening(args.rest())), status)
+            context
+                .set_presence(Some(Activity::listening(args.rest())), status)
+                .await
         }
         ActivityType::Streaming => {
             let url = args.single::<String>()?;
-            context.set_presence(Some(Activity::streaming(args.rest(), &url)), status)
+            context
+                .set_presence(Some(Activity::streaming(args.rest(), &url)), status)
+                .await
         }
         _ => return Err("Invalid type".into()),
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Kenneth Swenson
+ * Copyright 2020 Kenneth Swenson
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -18,9 +18,8 @@ use core::fmt;
 
 use chrono::{Date, Datelike, Local};
 use rand::prelude::*;
-use rand::Rng;
 use serenity::client::Context;
-use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
+use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::channel::Message;
 use serenity::utils::Colour;
 
@@ -29,27 +28,23 @@ use std::cmp::Ordering;
 
 lazy_static! {
     static ref DS1FILLERS: Vec<&'static str> =
-        { include_str!("data/ds1fillers.txt").split('\n').collect() };
+        include_str!("data/ds1fillers.txt").split('\n').collect();
     static ref DS1TEMPLATES: Vec<&'static str> =
-        { include_str!("data/ds1templates.txt").split('\n').collect() };
+        include_str!("data/ds1templates.txt").split('\n').collect();
     static ref DS3TEMPLATES: Vec<&'static str> =
-        { include_str!("data/ds3templates.txt").split('\n').collect() };
+        include_str!("data/ds3templates.txt").split('\n').collect();
     static ref DS3FILLERS: Vec<&'static str> =
-        { include_str!("data/ds3fillers.txt").split('\n').collect() };
-    static ref DS3CONJUNCTIONS: Vec<&'static str> = {
-        include_str!("data/ds3conjunctions.txt")
-            .split('\n')
-            .collect()
-    };
+        include_str!("data/ds3fillers.txt").split('\n').collect();
+    static ref DS3CONJUNCTIONS: Vec<&'static str> = include_str!("data/ds3conjunctions.txt")
+        .split('\n')
+        .collect();
     static ref BBTEMPLATES: Vec<&'static str> =
-        { include_str!("data/bbtemplates.txt").split('\n').collect() };
+        include_str!("data/bbtemplates.txt").split('\n').collect();
     static ref BBFILLERS: Vec<&'static str> =
-        { include_str!("data/bbfillers.txt").split('\n').collect() };
-    static ref BBCONJUNCTIONS: Vec<&'static str> = {
-        include_str!("data/bbconjunctions.txt")
-            .split('\n')
-            .collect()
-    };
+        include_str!("data/bbfillers.txt").split('\n').collect();
+    static ref BBCONJUNCTIONS: Vec<&'static str> = include_str!("data/bbconjunctions.txt")
+        .split('\n')
+        .collect();
     static ref DDAYS: Vec<&'static str> = vec![
         "Sweetmorn",
         "Boomtime",
@@ -82,13 +77,14 @@ impl From<Date<Local>> for Dday {
         let year = date.year() + 1166;
         let mut day_of_year = date.ordinal0();
         let mut tibs_day = false;
-        if year % 4 == 0 && year % 100 != 0 || year % 400 == 0 {
+        if year % 4 == 0 && year % 100 != 0 || year % 100 == 0 && year % 400 == 0 {
             match day_of_year.cmp(&60) {
                 Ordering::Equal => tibs_day = true,
                 Ordering::Greater => day_of_year -= 1,
                 Ordering::Less => (),
             }
         };
+        day_of_year -= 1;
         let day_of_season = day_of_year % 73 + 1;
         Dday {
             year,
@@ -125,7 +121,7 @@ impl fmt::Display for Dday {
 #[description = "Ask the magic eight ball your question and receive your fortune."]
 #[min_args(1)]
 #[aliases("8ball")]
-fn eightball(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn eightball(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let answers = vec![
         "It is certain.",
         "It is decidedly so.",
@@ -148,9 +144,20 @@ fn eightball(context: &mut Context, msg: &Message, args: Args) -> CommandResult 
         "Outlook not so good.",
         "Very doubtful.",
     ];
-    let mut rng = thread_rng();
+    let mut rng = rand::rngs::StdRng::from_entropy();
     let num = rng.gen_range(0, 19);
     let choice = answers[num];
+    let nick = {
+        if let Some(guild_id) = msg.guild_id {
+            context
+                .cache
+                .member(guild_id, msg.author.id)
+                .await
+                .and_then(|member| member.nick)
+        } else {
+            None
+        }
+    };
     msg.channel_id
         .send_message(&context, |m| {
             m.embed(|e| {
@@ -167,14 +174,8 @@ fn eightball(context: &mut Context, msg: &Message, args: Args) -> CommandResult 
                 .author(|mut a| {
                     if msg.is_private() {
                         a = a.name(&msg.author.name);
-                    } else if let Some(nick) = msg.guild_id.and_then(|guild_id| {
-                        context
-                            .cache
-                            .read()
-                            .member(guild_id, msg.author.id)
-                            .and_then(|member| member.nick)
-                    }) {
-                        a = a.name(nick);
+                    } else if let Some(n) = nick {
+                        a = a.name(n);
                     } else {
                         a = a.name(&msg.author.name);
                     }
@@ -184,28 +185,28 @@ fn eightball(context: &mut Context, msg: &Message, args: Args) -> CommandResult 
                 .field("🎱Eightball🎱", choice, false)
             })
         })
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        .await?;
+    Ok(())
 }
 
 #[command]
 #[description = "Display a randomly generated Dark Souls message."]
 #[aliases("ds")]
-fn darksouls(context: &mut Context, msg: &Message, _args: Args) -> CommandResult {
-    let mut rng = thread_rng();
+async fn darksouls(context: &Context, msg: &Message, _args: Args) -> CommandResult {
+    let mut rng = rand::rngs::StdRng::from_entropy();
     let template = DS1TEMPLATES[rng.gen_range(0, DS1TEMPLATES.len())];
     let filler = DS1FILLERS[rng.gen_range(0, DS1FILLERS.len())];
     let message = template.replace("{}", filler);
-    msg.channel_id
-        .say(&context, message)
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+    msg.channel_id.say(&context, message).await?;
+    Ok(())
 }
 
 #[command]
 #[description = "Display a randomly generated Dark Souls 3 message."]
 #[aliases("ds3")]
-fn darksouls3(context: &mut Context, msg: &Message, _args: Args) -> CommandResult {
-    let mut rng = thread_rng();
-    let has_conjunction = rng.gen_range(0, 2);
+async fn darksouls3(context: &Context, msg: &Message, _args: Args) -> CommandResult {
+    let mut rng = rand::rngs::StdRng::from_entropy();
+    let has_conjunction: u8 = rng.gen_range(0, 2);
     if has_conjunction == 1 {
         let conjunction = DS3CONJUNCTIONS[rng.gen_range(0, DS3CONJUNCTIONS.len())];
         let mut message: String = String::new();
@@ -230,25 +231,23 @@ fn darksouls3(context: &mut Context, msg: &Message, _args: Args) -> CommandResul
                 );
             }
         }
-        msg.channel_id
-            .say(&context, message)
-            .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        msg.channel_id.say(&context, message).await?;
+        Ok(())
     } else {
         let template = DS3TEMPLATES[rng.gen_range(0, DS3TEMPLATES.len())];
         let filler = DS3FILLERS[rng.gen_range(0, DS3FILLERS.len())];
         let message = template.replace("{}", filler);
-        msg.channel_id
-            .say(&context, message)
-            .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        msg.channel_id.say(&context, message).await?;
+        Ok(())
     }
 }
 
 #[command]
 #[description = "Display a randomly generated Bloodborne note."]
 #[aliases("bb")]
-fn bloodborne(context: &mut Context, msg: &Message, _args: Args) -> CommandResult {
-    let mut rng = thread_rng();
-    let has_conjunction = rng.gen_range(0, 2);
+async fn bloodborne(context: &Context, msg: &Message, _args: Args) -> CommandResult {
+    let mut rng = rand::rngs::StdRng::from_entropy();
+    let has_conjunction: u8 = rng.gen_range(0, 2);
     if has_conjunction == 1 {
         let conjunction = BBCONJUNCTIONS[rng.gen_range(0, BBCONJUNCTIONS.len())];
         let mut message: String = String::new();
@@ -273,28 +272,25 @@ fn bloodborne(context: &mut Context, msg: &Message, _args: Args) -> CommandResul
                 );
             }
         }
-        msg.channel_id
-            .say(&context, message)
-            .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        msg.channel_id.say(&context, message).await?;
+        Ok(())
     } else {
         let template = BBTEMPLATES[rng.gen_range(0, BBTEMPLATES.len())];
         let filler = BBFILLERS[rng.gen_range(0, BBFILLERS.len())];
         let message = template.replace("{}", filler);
-        msg.channel_id
-            .say(&context, message)
-            .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        msg.channel_id.say(&context, message).await?;
+        Ok(())
     }
 }
 
 #[command]
 #[description = "Display the current date of the Discordian/Erisian Calendar"]
 #[aliases("dd")]
-fn ddate(context: &mut Context, msg: &Message, _args: Args) -> CommandResult {
+async fn ddate(context: &Context, msg: &Message, _args: Args) -> CommandResult {
     let today = Local::today();
     let message = Dday::from(today);
-    msg.channel_id
-        .say(&context, message)
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+    msg.channel_id.say(&context, message).await?;
+    Ok(())
 }
 
 fn parse_int_ordinal_suffix(num: u32) -> &'static str {

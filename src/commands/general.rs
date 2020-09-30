@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Kenneth Swenson
+ * Copyright 2020 Kenneth Swenson
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -17,18 +17,22 @@
 use crate::util::ClientShardManager;
 use chrono::Utc;
 use serenity::client::bridge::gateway::ShardId;
-use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
+use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::channel::Message;
 use serenity::model::permissions::Permissions;
 use serenity::prelude::Context;
 use serenity::utils::Colour;
+use tracing::error;
 
 #[command]
 #[description = "Shows information about the bot."]
-fn about(context: &mut Context, msg: &Message) -> CommandResult {
-    let (invite_url, face) = {
-        let face = context.cache.read().user.face();
-        match context.cache.read().user.invite_url(
+async fn about(context: &Context, msg: &Message) -> CommandResult {
+    let face = context.cache.current_user().await.face();
+    let invite_url = context
+        .cache
+        .current_user()
+        .await
+        .invite_url(
             &context,
             Permissions::READ_MESSAGES
                 | Permissions::SEND_MESSAGES
@@ -39,14 +43,8 @@ fn about(context: &mut Context, msg: &Message) -> CommandResult {
                 | Permissions::CONNECT
                 | Permissions::USE_VAD
                 | Permissions::CHANGE_NICKNAME,
-        ) {
-            Ok(s) => (s, face),
-            Err(why) => {
-                error!("Failed to get invite url: {:?}", why);
-                return Err(From::from(why));
-            }
-        }
-    };
+        )
+        .await?;
     msg.channel_id
         .send_message(&context, |m| {
             m.embed(|e| {
@@ -64,12 +62,13 @@ fn about(context: &mut Context, msg: &Message) -> CommandResult {
                     .field("Source Code", "https://github.com/flat/lupusregina-", false)
             })
         })
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        .await?;
+    Ok(())
 }
 
 #[command]
 #[description = "Shows the avatar for the user or specified user."]
-fn avatar(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn avatar(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let face = if msg.mentions.is_empty() {
         if args.is_empty() {
             msg.author.face()
@@ -78,13 +77,14 @@ fn avatar(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
                 msg.guild_id
                     .ok_or("Failed to get GuildId from Message")?
                     .to_guild_cached(&context)
+                    .await
                     .ok_or("Failed to get Guild from GuildId")?
-                    .read()
                     .members_starting_with(args.rest(), false, true)
+                    .await
                     .first()
                     .ok_or("Could not find member")?
-                    .user_id()
-                    .to_user(&context)?
+                    .0
+                    .user
                     .face()
             };
             match result {
@@ -100,37 +100,42 @@ fn avatar(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
     };
     msg.channel_id
         .send_message(&context, |m| m.embed(|e| e.image(face)))
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        .await?;
+    Ok(())
 }
 
 #[command]
 #[description = "Shows various information about a user"]
 #[only_in("guilds")]
-fn userinfo(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn userinfo(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let guild_id = msg.guild_id.ok_or("Failed to get GuildID from Message.")?;
     let member = if msg.mentions.is_empty() {
         if args.is_empty() {
-            msg.member(&context).ok_or("Could not find member.")?
+            msg.member(&context).await?
         } else {
             (*(guild_id
                 .to_guild_cached(&context)
+                .await
                 .ok_or("Failed to get Guild from GuildId")?
-                .read()
                 .members_starting_with(args.rest(), false, true)
+                .await
                 .first()
                 .ok_or("Could not find member")?))
+            .0
             .clone()
         }
     } else {
-        guild_id.member(
-            &context,
-            msg.mentions
-                .first()
-                .ok_or("Failed to get user mentioned.")?,
-        )?
+        guild_id
+            .member(
+                context,
+                msg.mentions
+                    .first()
+                    .ok_or("Failed to get user mentioned.")?,
+            )
+            .await?
     };
 
-    let user = member.user.read();
+    let user = member.user;
     let nickname = member.nick.map_or("None".to_owned(), |nick| nick);
     let member_joined = member
         .joined_at
@@ -147,21 +152,21 @@ fn userinfo(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
                     .field("Joined Server", member_joined, true)
             })
         })
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        .await?;
+    Ok(())
 }
 
 #[command]
 #[description = "Shows various information about the guild."]
 #[only_in("guilds")]
-fn guildinfo(context: &mut Context, msg: &Message) -> CommandResult {
+async fn guildinfo(context: &Context, msg: &Message) -> CommandResult {
     let guild_id = msg
         .guild_id
         .ok_or_else(|| "Failed to get GuildID from Message.")?;
     let guild = guild_id
         .to_guild_cached(&context)
-        .ok_or("Failed to get Guild from GuildID")?
-        .read()
-        .clone();
+        .await
+        .ok_or("Failed to get Guild from GuildID")?;
 
     msg.channel_id
         .send_message(&context, move |m| {
@@ -189,39 +194,42 @@ fn guildinfo(context: &mut Context, msg: &Message) -> CommandResult {
                 e.footer(|f| f.text(format!("Guild created at {}", guild_id.created_at())))
             })
         })
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        .await?;
+    Ok(())
 }
 
 #[command]
 #[description = "Responds with the current latency to Discord."]
-fn ping(context: &mut Context, msg: &Message) -> CommandResult {
-    try {
-        let now = Utc::now();
-        let mut msg = msg.channel_id.say(&context, "Ping!")?;
-        let finish = Utc::now();
-        let lping = ((finish.timestamp() - now.timestamp()) * 1000)
-            + (i64::from(finish.timestamp_subsec_millis())
-                - i64::from(now.timestamp_subsec_millis()));
-        let shard_manager = context
-            .data
-            .read()
-            .get::<ClientShardManager>()
-            .ok_or_else(|| "Failed to get ClientShardManager.")?
-            .clone();
-        let shard_latency = shard_manager
-            .lock()
-            .runners
-            .lock()
-            .get(&ShardId(context.shard_id))
-            .ok_or_else(|| "Failed to get Shard.")?
-            .latency
-            .ok_or_else(|| "Failed to get latency from shard.")?
-            .as_millis();
-        msg.edit(&context, |m| {
-            m.content(&format!(
-                "Rest API: {}ms\nShard Latency: {}ms",
-                lping, shard_latency
-            ))
-        })?
-    }
+async fn ping(context: &Context, msg: &Message) -> CommandResult {
+    let now = Utc::now();
+    let mut msg = msg.channel_id.say(&context, "Ping!").await?;
+    let finish = Utc::now();
+    let lping = ((finish.timestamp() - now.timestamp()) * 1000)
+        + (i64::from(finish.timestamp_subsec_millis()) - i64::from(now.timestamp_subsec_millis()));
+    let shard_manager = context
+        .data
+        .read()
+        .await
+        .get::<ClientShardManager>()
+        .ok_or_else(|| "Failed to get ClientShardManager.")?
+        .clone();
+    let shard_latency = shard_manager
+        .lock()
+        .await
+        .runners
+        .lock()
+        .await
+        .get(&ShardId(context.shard_id))
+        .ok_or_else(|| "Failed to get Shard.")?
+        .latency
+        .ok_or_else(|| "Failed to get latency from shard.")?
+        .as_millis();
+    msg.edit(context, |m| {
+        m.content(&format!(
+            "Rest API: {}ms\nShard Latency: {}ms",
+            lping, shard_latency
+        ))
+    })
+    .await?;
+    Ok(())
 }

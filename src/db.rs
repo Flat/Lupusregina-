@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Kenneth Swenson
+ * Copyright 2020 Kenneth Swenson
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -15,17 +15,20 @@
  */
 
 use crate::util::get_project_dirs;
-use rusqlite::{Connection, NO_PARAMS};
 use serenity::model::id::GuildId;
+use sqlx::sqlite::SqliteQueryAs;
+use sqlx::SqlitePool;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
+use tracing::error;
 
+#[derive(sqlx::FromRow)]
 struct PrefixRow {
     guild_id: String,
     prefix: String,
 }
-pub fn create_db() {
+pub async fn create_db_and_pool() -> Result<SqlitePool, Box<dyn Error>> {
     if let Some(project_dirs) = get_project_dirs() {
         let db = project_dirs.data_dir().join("lupus.db");
         if !db.exists() {
@@ -37,70 +40,55 @@ pub fn create_db() {
                 Err(e) => error!("Error creating data directory: {}", e),
             }
         }
-        if let Ok(connection) = Connection::open(&db) {
-            match connection.execute(
-                "CREATE TABLE IF NOT EXISTS Prefix (guild_id TEXT PRIMARY KEY, prefix TEXT);",
-                NO_PARAMS,
-            ) {
-                Ok(_) => {}
-                Err(e) => {
-                    error!("{}", e);
-                }
-            }
-        } else {
-            error!(
-                "Could not open connection to lupus.db ({})",
-                &db.to_string_lossy()
-            );
+        let db_as_str = &db
+            .to_str()
+            .ok_or("Unable to convert database path to UTF-8 string.")?;
+        let pool = SqlitePool::new(&format!("sqlite://{}", db_as_str)).await?;
+        match sqlx::query(
+            "CREATE TABLE IF NOT EXISTS Prefix (guild_id TEXT PRIMARY KEY, prefix TEXT);",
+        )
+        .execute(&pool)
+        .await
+        {
+            Ok(_) => Ok(pool.clone()),
+            Err(why) => Err(format!("Unable to create database: {}", why).into()),
         }
     } else {
-        error!("Could not open project directory when creating database");
+        Err("Could not open project directory when creating database".into())
     }
 }
 
-pub fn get_guild_prefix(guild_id: GuildId) -> Result<String, Box<dyn Error>> {
-    let db = get_project_dirs()
-        .ok_or("Could not open project directory")?
-        .data_dir()
-        .join("lupus.db");
-    let conn = Connection::open(db)?;
-    let mut statement = conn.prepare(&"SELECT * FROM Prefix WHERE guild_id == ?;")?;
-    let mut rows = statement.query(&[guild_id.as_u64().to_string()])?;
-    Ok(rows.next()?.ok_or("Guild not found.")?.get(1)?)
+pub async fn get_guild_prefix(
+    pool: &SqlitePool,
+    guild_id: GuildId,
+) -> Result<String, Box<dyn Error>> {
+    let prefix_row = sqlx::query_as::<_, PrefixRow>("SELECT * FROM Prefix WHERE guild_id == ?;")
+        .bind(guild_id.as_u64().to_string())
+        .fetch_one(pool)
+        .await?;
+    Ok(prefix_row.prefix)
 }
 
-pub fn get_all_prefixes() -> Result<HashMap<u64, String>, Box<dyn Error>> {
-    let db = get_project_dirs()
-        .ok_or("Could not open project directory.")?
-        .data_dir()
-        .join("lupus.db");
-    let conn = Connection::open(db)?;
-    let mut statement = conn.prepare(&"SELECT * FROM Prefix")?;
-    let rows = statement.query_map(NO_PARAMS, |row| {
-        Ok(PrefixRow {
-            guild_id: row.get(0)?,
-            prefix: row.get(1)?,
-        })
-    })?;
+pub async fn get_all_prefixes(pool: &SqlitePool) -> Result<HashMap<u64, String>, Box<dyn Error>> {
+    let prefix_rows = sqlx::query_as::<_, PrefixRow>("SELECT * FROM Prefix")
+        .fetch_all(pool)
+        .await?;
     let mut prefixes = HashMap::<u64, String>::new();
-    for row in rows {
-        let row = row?;
+    for row in prefix_rows {
         prefixes.insert(row.guild_id.parse()?, row.prefix);
     }
     Ok(prefixes)
 }
 
-pub fn set_guild_prefix(guild_id: GuildId, prefix: String) -> Result<(), Box<dyn Error>> {
-    let db = get_project_dirs()
-        .ok_or("Could not open project directory")?
-        .data_dir()
-        .join("lupus.db");
-    let conn = Connection::open(db)?;
-    match conn.execute(
-        "INSERT OR REPLACE INTO Prefix (guild_id, prefix) values (?1, ?2)",
-        &[&guild_id.as_u64().to_string(), &prefix],
-    ) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(Box::new(e)),
-    }
+pub async fn set_guild_prefix(
+    pool: &SqlitePool,
+    guild_id: GuildId,
+    prefix: String,
+) -> Result<u64, Box<dyn Error>> {
+    sqlx::query("INSERT OR REPLACE INTO Prefix (guild_id, prefix) values (?, ?)")
+        .bind(&guild_id.as_u64().to_string())
+        .bind(&prefix)
+        .execute(pool)
+        .await
+        .map_err(|why| why.into())
 }

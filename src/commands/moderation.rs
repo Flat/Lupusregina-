@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Kenneth Swenson
+ * Copyright 2020 Kenneth Swenson
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -14,28 +14,28 @@
  *    limitations under the License.
  */
 
-use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
+use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::channel::Message;
 use serenity::prelude::Context;
 
 #[command]
 #[only_in("guilds")]
 #[required_permissions("BAN_MEMBERS")]
-fn ban(context: &mut Context, msg: &Message) -> CommandResult {
+async fn ban(context: &Context, msg: &Message) -> CommandResult {
     if !msg.mentions.is_empty() {
         try {
             msg.guild_id
                 .ok_or("Failed to get GuildId from Message")?
                 .to_guild_cached(&context)
+                .await
                 .ok_or("Failed to get Guild from GuildId")?
-                .read()
-                .member(&context, msg.mentions[0].id)?
-                .ban(&context, &0)?
+                .member(context, msg.mentions[0].id)
+                .await?
+                .ban(context, 0u8)
+                .await?
         }
     } else {
-        Err(serenity::framework::standard::CommandError(String::from(
-            "No mentioned target.",
-        )))
+        Err("No mentioned target.".into())
     }
 }
 
@@ -43,19 +43,18 @@ fn ban(context: &mut Context, msg: &Message) -> CommandResult {
 #[min_args(1)]
 #[only_in("guilds")]
 #[required_permissions("BAN_MEMBERS")]
-fn unban(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn unban(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let guild = msg
         .guild_id
         .ok_or("Failed to get GuildId from Message")?
         .to_guild_cached(&context)
-        .ok_or("Failed to get Guild from GuildId")?
-        .read()
-        .clone();
-    let bans = guild.bans(&context)?;
+        .await
+        .ok_or("Failed to get Guild from GuildId")?;
+    let bans = guild.bans(context).await?;
 
     for banned in bans {
         if banned.user.tag() == args.rest() {
-            guild.unban(&context, banned.user.id)?;
+            guild.unban(context, banned.user.id).await?;
         }
     }
     Ok(())
@@ -65,9 +64,10 @@ fn unban(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
 #[min_args(1)]
 #[only_in("guilds")]
 #[required_permissions("MANAGE_CHANNELS")]
-fn setslowmode(context: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+async fn setslowmode(context: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let seconds = &args.single::<u64>()?;
     msg.channel_id
         .edit(context, |c| c.slow_mode_rate(*seconds))
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        .await?;
+    Ok(())
 }

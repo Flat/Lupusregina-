@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Kenneth Swenson
+ * Copyright 2020 Kenneth Swenson
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -15,29 +15,34 @@
  */
 
 #![feature(try_blocks)]
-extern crate env_logger;
-#[macro_use]
-extern crate log;
+#![feature(async_closure)]
 
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::sync::Arc;
 
 use chrono::Utc;
+use dotenv::dotenv;
+use serenity::async_trait;
 use serenity::framework::standard::{
     help_commands,
-    macros::{group, help},
-    Args, CommandGroup, CommandResult, HelpOptions, StandardFramework,
+    macros::{group, help, hook},
+    Args, CommandGroup, CommandResult, DispatchError, HelpOptions, StandardFramework,
 };
-use serenity::model::event::ResumedEvent;
+use serenity::model::event::{ResumedEvent, VoiceServerUpdateEvent};
 use serenity::model::gateway::Ready;
 use serenity::model::id::UserId;
 use serenity::model::prelude::{GuildId, Message};
 use serenity::prelude::*;
 
-use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*, weeb::*};
+use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*, voice::*, weeb::*};
 use crate::util::{get_configuration, Prefixes};
+use lavalink_rs::LavalinkClient;
+use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::framework::standard::DispatchError::Ratelimited;
+use serenity::http::Http;
+
+use tracing::{error, info};
 
 pub mod commands;
 pub mod db;
@@ -45,15 +50,28 @@ pub mod util;
 
 struct Handler;
 
+#[async_trait]
 impl EventHandler for Handler {
-    fn cache_ready(&self, _ctx: Context, guilds: Vec<GuildId>) {
+    async fn cache_ready(&self, ctx: Context, guilds: Vec<GuildId>) {
         info!("Connected to {} guilds.", guilds.len());
+        let shard_messenger = ctx.shard;
+        shard_messenger.chunk_guilds(guilds, None, None);
     }
 
-    fn ready(&self, ctx: Context, ready: Ready) {
-        info!("Connected as {}", ready.user.name);
-        let mut data = ctx.data.write();
-        match data.get_mut::<util::Uptime>() {
+    async fn ready(&self, ctx: Context, ready: Ready) {
+        if let Some(shard) = ready.shard {
+            info!(
+                "Connected as {} on shard {}/{}",
+                ready.user.name,
+                shard[0] + 1,
+                shard[1]
+            );
+        } else {
+            info!("Connected as {}", ready.user.name);
+        }
+
+        let data = ctx.data.write();
+        match data.await.get_mut::<util::Uptime>() {
             Some(uptime) => {
                 uptime.entry(String::from("boot")).or_insert_with(Utc::now);
             }
@@ -61,7 +79,22 @@ impl EventHandler for Handler {
         };
     }
 
-    fn resume(&self, _: Context, _: ResumedEvent) {
+    async fn voice_server_update(&self, ctx: Context, voice: VoiceServerUpdateEvent) {
+        if let Some(guild_id) = voice.guild_id {
+            let data = ctx.data.read().await;
+            let voice_server_lock = match data.get::<VoiceGuildUpdate>() {
+                Some(vgu) => vgu,
+                None => {
+                    error!("Unable to get VoiceGuildUpdate from data.");
+                    return;
+                }
+            };
+            let mut voice_server = voice_server_lock.write().await;
+            voice_server.insert(guild_id.0.into());
+        }
+    }
+
+    async fn resume(&self, _: Context, _: ResumedEvent) {
         info!("Resumed");
     }
 }
@@ -103,106 +136,153 @@ struct Moderation;
 #[commands(anime, manga, vtuber)]
 struct Weeb;
 
+#[group]
+#[commands(play, stop, nowplaying)]
+struct Voice;
+
 #[help]
-fn my_help(
-    context: &mut Context,
+async fn my_help(
+    context: &Context,
     msg: &Message,
     args: Args,
     help_options: &'static HelpOptions,
     groups: &[&'static CommandGroup],
     owners: HashSet<UserId>,
 ) -> CommandResult {
-    help_commands::with_embeds(context, msg, args, help_options, groups, owners)
+    help_commands::with_embeds(context, msg, args, help_options, groups, owners).await;
+    Ok(())
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    kankyo::load(true)?;
-    env_logger::init();
+#[hook]
+async fn after(ctx: &Context, msg: &Message, command_name: &str, command_result: CommandResult) {
+    match command_result {
+        Ok(()) => msg.react(ctx, '\u{2705}').await.map_or_else(|_| (), |_| ()),
+        Err(e) => {
+            error!(
+                "Command {:?} triggered by {}: {:?}",
+                command_name,
+                msg.author.tag(),
+                e
+            );
+            msg.react(ctx, '\u{274C}').await.map_or_else(|_| (), |_| ());
+        }
+    }
+}
+
+#[hook]
+async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> () {
+    match error {
+        Ratelimited(e) => {
+            error!("{} failed: {:?}", msg.content, error);
+            let _ = msg
+                .channel_id
+                .say(&ctx, format!("Ratelimited: Try again in {:#?} seconds.", e));
+        }
+        _ => error!("{} failed: {:?}", msg.content, error),
+    }
+}
+
+#[hook]
+async fn dynamic_prefix(ctx: &Context, msg: &Message) -> Option<String> {
+    if msg.is_private() {
+        return Some("".into());
+    }
+    if let Some(guild_id) = msg.guild_id {
+        let prefixes = async { ctx.data.read().await.get::<Prefixes>().cloned() }.await;
+        let prefix = prefixes.map_or_else(
+            || ".".into(),
+            |pref| {
+                pref.get(guild_id.as_u64())
+                    .map_or_else(|| ".".into(), |prefix| prefix.into())
+            },
+        );
+        Some(prefix)
+    } else {
+        Some(".".into())
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    dotenv().expect("Failed to load .env file!");
+    tracing_subscriber::fmt::init();
 
     let token = env::var("BOT_TOKEN")?;
+    let lavalink_password = env::var("LAVALINK_PASS")?;
+    let lavalink_host = env::var("LAVALINK_HOST")?;
+    let lavalink_port = u16::from_str_radix(&env::var("LAVALINK_PORT")?, 10)?;
 
     let conf = get_configuration()?;
 
-    db::create_db();
+    let db_connection_pool = match db::create_db_and_pool().await {
+        Ok(pool) => pool,
+        Err(why) => panic!("Unable to open connection pool: {:?}", why),
+    };
 
-    let mut client = Client::new(&token, Handler)?;
+    let http = Http::new_with_token(&token);
 
-    let (owner, bot_id) = match client.cache_and_http.http.get_current_application_info() {
+    let (owners, bot_id) = match http.get_current_application_info().await {
         Ok(info) => {
             let mut owners = HashSet::new();
             owners.insert(info.owner.id);
             (owners, info.id)
         }
-        Err(why) => panic!("Could not access application information: {:?}", why),
+        Err(why) => panic!("Could not access application info: {:?}", why),
     };
 
-    client.with_framework(
-        StandardFramework::new()
-            .configure(|c| {
-                c.dynamic_prefix(|ctx, msg| {
-                    if msg.is_private() {
-                        return Some("".into());
-                    }
-                    if let Some(guild_id) = msg.guild_id {
-                        let prefixes = { ctx.data.read().get::<Prefixes>().cloned() };
-                        let prefix = prefixes.map_or_else(
-                            || ".".into(),
-                            |pref| {
-                                pref.get(guild_id.as_u64())
-                                    .map_or_else(|| ".".into(), |prefix| prefix.into())
-                            },
-                        );
-                        Some(prefix)
-                    } else {
-                        Some(".".into())
-                    }
-                })
+    let framework = StandardFramework::new()
+        .configure(|c| {
+            c.dynamic_prefix(dynamic_prefix)
                 .on_mention(Some(bot_id))
-                .owners(owner)
-            })
-            .after(|context, message, command, result| match result {
-                Ok(()) => message
-                    .react(context, '\u{2705}')
-                    .map_or_else(|_| (), |_| ()),
-                Err(e) => {
-                    error!(
-                        "Command {:?} triggered by {}: {:?}",
-                        command,
-                        message.author.tag(),
-                        e
-                    );
-                    message
-                        .react(context, '\u{274C}')
-                        .map_or_else(|_| (), |_| ());
-                }
-            })
-            .on_dispatch_error(|context, message, error| match error {
-                Ratelimited(e) => {
-                    error!("{} failed: {:?}", message.content, error);
-                    let _ = message.channel_id.say(
-                        &context,
-                        format!("Ratelimited: Try again in {} seconds.", e),
-                    );
-                }
-                _ => error!("{} failed: {:?}", message.content, error),
-            })
-            .bucket("anilist", |b| b.time_span(60).limit(90))
-            .help(&MY_HELP)
-            .group(&GENERAL_GROUP)
-            .group(&FUN_GROUP)
-            .group(&ADMIN_GROUP)
-            .group(&OWNER_GROUP)
-            .group(&MODERATION_GROUP)
-            .group(&WEEB_GROUP),
-    );
-    let prefixes = db::get_all_prefixes().unwrap_or_else(|_| HashMap::<u64, String>::new());
+                .owners(owners)
+        })
+        .after(after)
+        .on_dispatch_error(dispatch_error)
+        .bucket("anilist", |b| b.time_span(60).limit(90))
+        .await
+        .help(&MY_HELP)
+        .group(&GENERAL_GROUP)
+        .group(&FUN_GROUP)
+        .group(&ADMIN_GROUP)
+        .group(&OWNER_GROUP)
+        .group(&MODERATION_GROUP)
+        .group(&WEEB_GROUP)
+        .group(&VOICE_GROUP);
+
+    let mut client = Client::new(&token)
+        .event_handler(Handler)
+        .framework(framework)
+        .add_intent(
+            GatewayIntents::GUILD_MESSAGES
+                | GatewayIntents::DIRECT_MESSAGES
+                | GatewayIntents::GUILD_MESSAGES
+                | GatewayIntents::GUILDS
+                | GatewayIntents::GUILD_BANS
+                | GatewayIntents::GUILD_PRESENCES
+                | GatewayIntents::GUILD_VOICE_STATES,
+        )
+        .await
+        .expect("Error creating client!");
+
+    let prefixes = db::get_all_prefixes(&db_connection_pool)
+        .await
+        .unwrap_or_else(|_| HashMap::<u64, String>::new());
+    let mut lava_client = LavalinkClient::new(bot_id.0);
+    lava_client.set_host(lavalink_host);
+    lava_client.set_password(lavalink_password);
+    lava_client.set_port(lavalink_port);
+    let lava_client = lava_client.initialize(LavalinkHandler).await?;
     {
-        let mut data = client.data.write();
+        let mut data = client.data.write().await;
+        data.insert::<VoiceManager>(Arc::clone(&client.voice_manager));
+        data.insert::<VoiceGuildUpdate>(Arc::new(RwLock::new(HashSet::new())));
+        data.insert::<Lavalink>(lava_client);
         data.insert::<util::Config>(Arc::clone(&Arc::new(conf)));
-        data.insert::<util::Uptime>(HashMap::default());
+        data.insert::<util::DBPool>(Arc::clone(&Arc::new(db_connection_pool)));
         data.insert::<util::ClientShardManager>(Arc::clone(&client.shard_manager));
+        data.insert::<util::Uptime>(HashMap::default());
         data.insert::<util::Prefixes>(prefixes);
     }
 
-    client.start_autosharded().map_err(|e| e.into())
+    client.start_autosharded().await.map_err(|e| e.into())
 }

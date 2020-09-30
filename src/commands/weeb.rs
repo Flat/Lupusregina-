@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Kenneth Swenson
+ * Copyright 2020 Kenneth Swenson
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -17,12 +17,12 @@
 use chrono::Utc;
 use graphql_client::{GraphQLQuery, Response};
 use serde::Deserialize;
-use serenity::framework::standard::{macros::command, Args, CommandError, CommandResult};
+use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::channel::Message;
 use serenity::prelude::Context;
 use serenity::utils::Colour;
 
-use reqwest::blocking::Client as ReqwestClient;
+use reqwest::Client as ReqwestClient;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
@@ -30,7 +30,7 @@ use std::convert::TryFrom;
 #[graphql(
     schema_path = "src/anilist/schema.graphql",
     query_path = "src/anilist/AnimeQuery.graphql",
-    response_derives = "Debug"
+    response_derives = "Debug,Clone"
 )]
 struct AnimeQuery;
 
@@ -38,7 +38,7 @@ struct AnimeQuery;
 #[graphql(
     schema_path = "src/anilist/schema.graphql",
     query_path = "src/anilist/MangaQuery.graphql",
-    response_derives = "Debug"
+    response_derives = "Debug,Clone"
 )]
 struct MangaQuery;
 
@@ -56,16 +56,19 @@ const VIRTUALYOUTUBER_WIKI_DETAILS: &str =
 #[example = "Tate no Yuusha no Nariagari"]
 #[min_args(1)]
 #[bucket = "anilist"]
-fn anime(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn anime(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let query = args.rest();
     let anime = anime_query(anime_query::Variables {
         title: Some(query.to_string()),
-    })?;
+    })
+    .await?;
     let anime = anime
         .data
         .and_then(|data| {
-            data.page
-                .and_then(|page| page.media.and_then(|mut media| media.remove(0)))
+            data.page.and_then(|page| {
+                page.media
+                    .and_then(|media| media.first().cloned().map_or_else(|| None, |m| m))
+            })
         })
         .ok_or_else(|| "Unable to get anime from response.")?;
     let id = anime.id;
@@ -156,7 +159,8 @@ fn anime(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
                 e
             })
         })
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        .await?;
+    Ok(())
 }
 
 #[command]
@@ -165,16 +169,19 @@ fn anime(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
 #[example = "Tate no Yuusha no Nariagari"]
 #[bucket = "anilist"]
 #[min_args(1)]
-fn manga(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn manga(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let query = args.rest();
     let manga = manga_query(manga_query::Variables {
         title: Some(query.to_string()),
-    })?;
+    })
+    .await?;
     let manga = manga
         .data
         .and_then(|data| {
-            data.page
-                .and_then(|page| page.media.and_then(|mut media| media.remove(0)))
+            data.page.and_then(|page| {
+                page.media
+                    .and_then(|media| media.first().cloned().map_or_else(|| None, |m| m))
+            })
         })
         .ok_or_else(|| "Unable to get manga from response.")?;
     let id = manga.id;
@@ -261,31 +268,34 @@ fn manga(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
                 e
             })
         })
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        .await?;
+    Ok(())
 }
 
-fn anime_query(
+async fn anime_query(
     variables: anime_query::Variables,
-) -> Result<Response<anime_query::ResponseData>, failure::Error> {
+) -> Result<Response<anime_query::ResponseData>, Box<dyn std::error::Error + Send + Sync>> {
     let request_body = AnimeQuery::build_query(variables);
     let client = ReqwestClient::new();
     let res = client
         .post(ANILIST_API_ENDPOINT)
         .json(&request_body)
-        .send()?;
-    res.json().map_err(From::from)
+        .send()
+        .await?;
+    res.json().await.map_err(From::from)
 }
 
-fn manga_query(
+async fn manga_query(
     variables: manga_query::Variables,
-) -> Result<Response<manga_query::ResponseData>, failure::Error> {
+) -> Result<Response<manga_query::ResponseData>, Box<dyn std::error::Error + Send + Sync>> {
     let request_body = MangaQuery::build_query(variables);
     let client = ReqwestClient::new();
     let res = client
         .post(ANILIST_API_ENDPOINT)
         .json(&request_body)
-        .send()?;
-    res.json().map_err(From::from)
+        .send()
+        .await?;
+    res.json().await.map_err(From::from)
 }
 
 #[derive(Deserialize, Clone)]
@@ -347,10 +357,10 @@ struct ExpandedArticleResultSet {
 #[usage = "<Virtual YouTuber Name>"]
 #[example = "Natsuiro Matsuri"]
 #[min_args(1)]
-fn vtuber(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn vtuber(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let query = args.rest();
-    let search = search_vtuber_wiki(query.into())?;
-    let details = get_vtuber_article_details(search.id)?;
+    let search = search_vtuber_wiki(query.into()).await?;
+    let details = get_vtuber_article_details(search.id).await?;
     msg.channel_id
         .send_message(context, |m| {
             m.embed(|e| {
@@ -363,16 +373,21 @@ fn vtuber(context: &mut Context, msg: &Message, args: Args) -> CommandResult {
                 e
             })
         })
-        .map_or_else(|e| Err(CommandError(e.to_string())), |_| Ok(()))
+        .await?;
+    Ok(())
 }
 
-fn search_vtuber_wiki(search: String) -> Result<LocalWikiSearchResult, Box<dyn std::error::Error>> {
+async fn search_vtuber_wiki(
+    search: String,
+) -> Result<LocalWikiSearchResult, Box<dyn std::error::Error + Send + Sync>> {
     let client = ReqwestClient::new();
     let results: LocalWikiSearchResultSet = client
         .get(VIRTUALYOUTUBER_WIKI_SEARCH)
         .query(&[("limit", "1"), ("query", &search)])
-        .send()?
-        .json()?;
+        .send()
+        .await?
+        .json()
+        .await?;
     results
         .items
         .get(0)
@@ -380,13 +395,17 @@ fn search_vtuber_wiki(search: String) -> Result<LocalWikiSearchResult, Box<dyn s
         .ok_or_else(|| format!("No results for {}", search).into())
 }
 
-fn get_vtuber_article_details(id: u64) -> Result<ExpandedArticle, Box<dyn std::error::Error>> {
+async fn get_vtuber_article_details(
+    id: u64,
+) -> Result<ExpandedArticle, Box<dyn std::error::Error + Send + Sync>> {
     let client = ReqwestClient::new();
     let results: ExpandedArticleResultSet = client
         .get(VIRTUALYOUTUBER_WIKI_DETAILS)
         .query(&[("abstract", "500"), ("ids", &id.to_string())])
-        .send()?
-        .json()?;
+        .send()
+        .await?
+        .json()
+        .await?;
     results
         .items
         .get(&id.to_string())
