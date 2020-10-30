@@ -1,6 +1,6 @@
 [package]
 name = "lupusreginaβ"
-version = "0.5.2"
+version = "0.5.3"
 authors = ["Ken Swenson <flat@esoteric.moe>"]
 license = "Apache-2.0"
 edition = "2018"
@@ -33,15 +33,11 @@ default-features = false
 features = ["sqlite", "runtime-tokio", "macros"]
 
 [dependencies.serenity]
-git = "https://github.com/serenity-rs/serenity"
-branch = "next"
+#git = "https://github.com/serenity-rs/serenity"
+version = "0.9.0"
+#branch = "next"
 #path = "../serenity"
 features = ["framework", "standard_framework", "absolute_ratelimits", "rustls_backend", "voice"]
-
-[dependencies.lavalink-rs]
-#path = "../serenity-lavalink"
-git = "https://gitlab.com/nitsuga5124/lavalink-rs/"
-branch = "serenity_next"
 
 [dependencies.reqwest]
 version = "0.10"
