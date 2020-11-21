@@ -22,7 +22,6 @@ use serenity::model::channel::Message;
 use serenity::model::permissions::Permissions;
 use serenity::prelude::Context;
 use serenity::utils::Colour;
-use tracing::error;
 
 #[command]
 #[description = "Shows information about the bot."]
@@ -73,27 +72,18 @@ async fn avatar(context: &Context, msg: &Message, args: Args) -> CommandResult {
         if args.is_empty() {
             msg.author.face()
         } else {
-            let result: Result<String, Box<dyn std::error::Error>> = try {
-                msg.guild_id
-                    .ok_or("Failed to get GuildId from Message")?
-                    .to_guild_cached(&context)
-                    .await
-                    .ok_or("Failed to get Guild from GuildId")?
-                    .members_starting_with(args.rest(), false, true)
-                    .await
-                    .first()
-                    .ok_or("Could not find member")?
-                    .0
-                    .user
-                    .face()
-            };
-            match result {
-                Ok(face) => face,
-                Err(e) => {
-                    error!("While searching for user: {}", e);
-                    msg.author.face()
-                }
-            }
+            msg.guild_id
+                .ok_or("Failed to get GuildId from Message")?
+                .to_guild_cached(&context)
+                .await
+                .ok_or("Failed to get Guild from GuildId")?
+                .members_starting_with(args.rest(), false, true)
+                .await
+                .first()
+                .ok_or("Could not find member")?
+                .0
+                .user
+                .face()
         }
     } else {
         msg.mentions[0].face()

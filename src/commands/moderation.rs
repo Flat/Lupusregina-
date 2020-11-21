@@ -23,20 +23,19 @@ use serenity::prelude::Context;
 #[required_permissions("BAN_MEMBERS")]
 async fn ban(context: &Context, msg: &Message) -> CommandResult {
     if !msg.mentions.is_empty() {
-        try {
-            msg.guild_id
-                .ok_or("Failed to get GuildId from Message")?
-                .to_guild_cached(&context)
-                .await
-                .ok_or("Failed to get Guild from GuildId")?
-                .member(context, msg.mentions[0].id)
-                .await?
-                .ban(context, 0u8)
-                .await?
-        }
+        msg.guild_id
+            .ok_or("Failed to get GuildId from Message")?
+            .to_guild_cached(&context)
+            .await
+            .ok_or("Failed to get Guild from GuildId")?
+            .member(context, msg.mentions[0].id)
+            .await?
+            .ban(context, 0u8)
+            .await?
     } else {
-        Err("No mentioned target.".into())
+        return Err("No mentioned target.".into());
     }
+    Ok(())
 }
 
 #[command]

@@ -17,6 +17,7 @@
 use std::sync::Arc;
 
 use chrono::Utc;
+#[cfg(target_os = "linux")]
 use procfs::process::Process;
 use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::channel::Message;

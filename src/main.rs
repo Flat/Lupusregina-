@@ -14,9 +14,6 @@
  *    limitations under the License.
  */
 
-#![feature(try_blocks)]
-#![feature(async_closure)]
-
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::sync::Arc;
@@ -53,10 +50,10 @@ struct Handler;
 impl EventHandler for Handler {
     async fn cache_ready(&self, ctx: Context, guilds: Vec<GuildId>) {
         info!("Connected to {} guilds.", guilds.len());
-        let shard_messenger = ctx.shard;
-        for guild in guilds {
-            shard_messenger.chunk_guild(guild, None, ChunkGuildFilter::None, None);
-        }
+        // let shard_messenger = ctx.shard;
+        // for guild in guilds {
+        //     shard_messenger.chunk_guild(guild, None, ChunkGuildFilter::None, None);
+        // }
     }
 
     async fn ready(&self, ctx: Context, ready: Ready) {
@@ -121,7 +118,6 @@ struct Moderation;
 #[group]
 #[commands(anime, manga, vtuber)]
 struct Weeb;
-
 
 #[help]
 async fn my_help(
