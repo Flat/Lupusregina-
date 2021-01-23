@@ -84,7 +84,6 @@ impl From<Date<Local>> for Dday {
                 Ordering::Less => (),
             }
         };
-        day_of_year -= 1;
         let day_of_season = day_of_year % 73 + 1;
         Dday {
             year,
@@ -145,7 +144,7 @@ async fn eightball(context: &Context, msg: &Message, args: Args) -> CommandResul
         "Very doubtful.",
     ];
     let mut rng = rand::rngs::StdRng::from_entropy();
-    let num = rng.gen_range(0, 19);
+    let num = rng.gen_range(0..=19);
     let choice = answers[num];
     let nick = {
         if let Some(guild_id) = msg.guild_id {
@@ -194,8 +193,8 @@ async fn eightball(context: &Context, msg: &Message, args: Args) -> CommandResul
 #[aliases("ds")]
 async fn darksouls(context: &Context, msg: &Message, _args: Args) -> CommandResult {
     let mut rng = rand::rngs::StdRng::from_entropy();
-    let template = DS1TEMPLATES[rng.gen_range(0, DS1TEMPLATES.len())];
-    let filler = DS1FILLERS[rng.gen_range(0, DS1FILLERS.len())];
+    let template = DS1TEMPLATES[rng.gen_range(0..=DS1TEMPLATES.len())];
+    let filler = DS1FILLERS[rng.gen_range(0..=DS1FILLERS.len())];
     let message = template.replace("{}", filler);
     msg.channel_id.say(&context, message).await?;
     Ok(())
@@ -206,15 +205,15 @@ async fn darksouls(context: &Context, msg: &Message, _args: Args) -> CommandResu
 #[aliases("ds3")]
 async fn darksouls3(context: &Context, msg: &Message, _args: Args) -> CommandResult {
     let mut rng = rand::rngs::StdRng::from_entropy();
-    let has_conjunction: u8 = rng.gen_range(0, 2);
+    let has_conjunction: u8 = rng.gen_range(0..=2);
     if has_conjunction == 1 {
-        let conjunction = DS3CONJUNCTIONS[rng.gen_range(0, DS3CONJUNCTIONS.len())];
+        let conjunction = DS3CONJUNCTIONS[rng.gen_range(0..=DS3CONJUNCTIONS.len())];
         let mut message: String = String::new();
         for x in 0..2 {
             if x == 0 {
                 message.push_str(
-                    &DS3TEMPLATES[rng.gen_range(0, DS3TEMPLATES.len())]
-                        .replace("{}", DS3FILLERS[rng.gen_range(0, DS3FILLERS.len())]),
+                    &DS3TEMPLATES[rng.gen_range(0..=DS3TEMPLATES.len())]
+                        .replace("{}", DS3FILLERS[rng.gen_range(0..=DS3FILLERS.len())]),
                 );
                 if conjunction != "," {
                     message.push(' ');
@@ -226,16 +225,16 @@ async fn darksouls3(context: &Context, msg: &Message, _args: Args) -> CommandRes
                 }
             } else {
                 message.push_str(
-                    &DS3TEMPLATES[rng.gen_range(0, DS3TEMPLATES.len())]
-                        .replace("{}", DS3FILLERS[rng.gen_range(0, DS3FILLERS.len())]),
+                    &DS3TEMPLATES[rng.gen_range(0..=DS3TEMPLATES.len())]
+                        .replace("{}", DS3FILLERS[rng.gen_range(0..=DS3FILLERS.len())]),
                 );
             }
         }
         msg.channel_id.say(&context, message).await?;
         Ok(())
     } else {
-        let template = DS3TEMPLATES[rng.gen_range(0, DS3TEMPLATES.len())];
-        let filler = DS3FILLERS[rng.gen_range(0, DS3FILLERS.len())];
+        let template = DS3TEMPLATES[rng.gen_range(0..=DS3TEMPLATES.len())];
+        let filler = DS3FILLERS[rng.gen_range(0..=DS3FILLERS.len())];
         let message = template.replace("{}", filler);
         msg.channel_id.say(&context, message).await?;
         Ok(())
@@ -247,15 +246,15 @@ async fn darksouls3(context: &Context, msg: &Message, _args: Args) -> CommandRes
 #[aliases("bb")]
 async fn bloodborne(context: &Context, msg: &Message, _args: Args) -> CommandResult {
     let mut rng = rand::rngs::StdRng::from_entropy();
-    let has_conjunction: u8 = rng.gen_range(0, 2);
+    let has_conjunction: u8 = rng.gen_range(0..=2);
     if has_conjunction == 1 {
-        let conjunction = BBCONJUNCTIONS[rng.gen_range(0, BBCONJUNCTIONS.len())];
+        let conjunction = BBCONJUNCTIONS[rng.gen_range(0..=BBCONJUNCTIONS.len())];
         let mut message: String = String::new();
         for x in 0..2 {
             if x == 0 {
                 message.push_str(
-                    &BBTEMPLATES[rng.gen_range(0, BBTEMPLATES.len())]
-                        .replace("{}", BBFILLERS[rng.gen_range(0, BBFILLERS.len())]),
+                    &BBTEMPLATES[rng.gen_range(0..=BBTEMPLATES.len())]
+                        .replace("{}", BBFILLERS[rng.gen_range(0..=BBFILLERS.len())]),
                 );
                 if conjunction != "," {
                     message.push(' ');
@@ -267,16 +266,16 @@ async fn bloodborne(context: &Context, msg: &Message, _args: Args) -> CommandRes
                 }
             } else {
                 message.push_str(
-                    &BBTEMPLATES[rng.gen_range(0, BBTEMPLATES.len())]
-                        .replace("{}", BBFILLERS[rng.gen_range(0, BBFILLERS.len())]),
+                    &BBTEMPLATES[rng.gen_range(0..=BBTEMPLATES.len())]
+                        .replace("{}", BBFILLERS[rng.gen_range(0..=BBFILLERS.len())]),
                 );
             }
         }
         msg.channel_id.say(&context, message).await?;
         Ok(())
     } else {
-        let template = BBTEMPLATES[rng.gen_range(0, BBTEMPLATES.len())];
-        let filler = BBFILLERS[rng.gen_range(0, BBFILLERS.len())];
+        let template = BBTEMPLATES[rng.gen_range(0..=BBTEMPLATES.len())];
+        let filler = BBFILLERS[rng.gen_range(0..=BBFILLERS.len())];
         let message = template.replace("{}", filler);
         msg.channel_id.say(&context, message).await?;
         Ok(())

@@ -29,19 +29,19 @@ use crate::util::{DBPool, Prefixes};
 #[required_permissions("ADMINISTRATOR")]
 async fn setprefix(context: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let arg = args.single::<String>().map_err(|_| "Arg.single was None")?;
-    let guild_id = msg.guild_id.ok_or_else(|| "guild_id was None")?;
+    let guild_id = msg.guild_id.ok_or("guild_id was None")?;
     let pool = context
         .data
         .read()
         .await
         .get::<DBPool>()
-        .ok_or_else(|| "Unable to get DB Pool.")?
+        .ok_or("Unable to get DB Pool.")?
         .clone();
     {
         let mut data = context.data.write().await;
         let prefixes = data
             .get_mut::<Prefixes>()
-            .ok_or_else(|| "Unable to get Prefix HashMap from context data.")?;
+            .ok_or("Unable to get Prefix HashMap from context data.")?;
         prefixes.insert(*guild_id.as_u64(), arg.clone());
     }
     db::set_guild_prefix(&pool, guild_id, arg)

@@ -34,7 +34,7 @@ use serenity::prelude::*;
 
 use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*, weeb::*};
 use crate::util::{get_configuration, Prefixes};
-use serenity::client::bridge::gateway::{ChunkGuildFilter, GatewayIntents};
+use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::framework::standard::DispatchError::Ratelimited;
 use serenity::http::Http;
 
@@ -48,12 +48,8 @@ struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
-    async fn cache_ready(&self, ctx: Context, guilds: Vec<GuildId>) {
+    async fn cache_ready(&self, _ctx: Context, guilds: Vec<GuildId>) {
         info!("Connected to {} guilds.", guilds.len());
-        // let shard_messenger = ctx.shard;
-        // for guild in guilds {
-        //     shard_messenger.chunk_guild(guild, None, ChunkGuildFilter::None, None);
-        // }
     }
 
     async fn ready(&self, ctx: Context, ready: Ready) {
@@ -150,7 +146,7 @@ async fn after(ctx: &Context, msg: &Message, command_name: &str, command_result:
 
 #[hook]
 async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> () {
-    match error {
+    match &error {
         Ratelimited(e) => {
             error!("{} failed: {:?}", msg.content, error);
             let _ = msg
@@ -227,7 +223,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client = Client::builder(&token)
         .event_handler(Handler)
         .framework(framework)
-        .add_intent(
+        .intents(
             GatewayIntents::GUILD_MESSAGES
                 | GatewayIntents::DIRECT_MESSAGES
                 | GatewayIntents::GUILD_MESSAGES

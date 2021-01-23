@@ -185,7 +185,7 @@ async fn setavatar(context: &Context, msg: &Message, mut args: Args) -> CommandR
         let url = &msg
             .attachments
             .get(0)
-            .ok_or_else(|| "Failed to get attachment")?
+            .ok_or("Failed to get attachment")?
             .url;
         let response = reqwest::get(url).await?;
         let headers = response.headers().to_owned();

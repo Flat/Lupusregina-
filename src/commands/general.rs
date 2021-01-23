@@ -150,9 +150,7 @@ async fn userinfo(context: &Context, msg: &Message, args: Args) -> CommandResult
 #[description = "Shows various information about the guild."]
 #[only_in("guilds")]
 async fn guildinfo(context: &Context, msg: &Message) -> CommandResult {
-    let guild_id = msg
-        .guild_id
-        .ok_or_else(|| "Failed to get GuildID from Message.")?;
+    let guild_id = msg.guild_id.ok_or("Failed to get GuildID from Message.")?;
     let guild = guild_id
         .to_guild_cached(&context)
         .await
@@ -201,7 +199,7 @@ async fn ping(context: &Context, msg: &Message) -> CommandResult {
         .read()
         .await
         .get::<ClientShardManager>()
-        .ok_or_else(|| "Failed to get ClientShardManager.")?
+        .ok_or("Failed to get ClientShardManager.")?
         .clone();
     let shard_latency = shard_manager
         .lock()
@@ -210,9 +208,9 @@ async fn ping(context: &Context, msg: &Message) -> CommandResult {
         .lock()
         .await
         .get(&ShardId(context.shard_id))
-        .ok_or_else(|| "Failed to get Shard.")?
+        .ok_or("Failed to get Shard.")?
         .latency
-        .ok_or_else(|| "Failed to get latency from shard.")?
+        .ok_or("Failed to get latency from shard.")?
         .as_millis();
     msg.edit(context, |m| {
         m.content(&format!(

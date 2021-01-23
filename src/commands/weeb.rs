@@ -16,6 +16,7 @@
 
 use chrono::Utc;
 use graphql_client::{GraphQLQuery, Response};
+use html2text::from_read_with_decorator;
 use serde::Deserialize;
 use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::channel::Message;
@@ -23,8 +24,11 @@ use serenity::prelude::Context;
 use serenity::utils::Colour;
 
 use reqwest::Client as ReqwestClient;
+use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::convert::TryFrom;
+
+use crate::util::DiscordMarkdownDecorator;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -46,9 +50,7 @@ const ANILIST_ICON: &str = "https://anilist.co/img/icons/apple-touch-icon-152x15
 const ANILIST_API_ENDPOINT: &str = "https://graphql.anilist.co";
 const ANILIST_MANGA_PATH: &str = "https://anilist.co/manga/";
 const ANILIST_ANIME_PATH: &str = "https://anilist.co/anime/";
-const VIRTUALYOUTUBER_WIKI_SEARCH: &str = "https://virtualyoutuber.fandom.com/api/v1/Search/List";
-const VIRTUALYOUTUBER_WIKI_DETAILS: &str =
-    "https://virtualyoutuber.fandom.com/api/v1/Articles/Details";
+const VIRTUALYOUTUBER_WIKI_API: &str = "https://virtualyoutuber.fandom.com/api.php";
 
 #[command]
 #[description = "Shows information about an anime from Anilist."]
@@ -70,11 +72,9 @@ async fn anime(context: &Context, msg: &Message, args: Args) -> CommandResult {
                     .and_then(|media| media.first().cloned().map_or_else(|| None, |m| m))
             })
         })
-        .ok_or_else(|| "Unable to get anime from response.")?;
+        .ok_or("Unable to get anime from response.")?;
     let id = anime.id;
-    let title = anime
-        .title
-        .ok_or_else(|| "Unable to get title field from anime.")?;
+    let title = anime.title.ok_or("Unable to get title field from anime.")?;
     let cover_image = anime.cover_image.and_then(|img| img.large);
     let description = anime.description;
     let status = anime.status;
@@ -183,11 +183,9 @@ async fn manga(context: &Context, msg: &Message, args: Args) -> CommandResult {
                     .and_then(|media| media.first().cloned().map_or_else(|| None, |m| m))
             })
         })
-        .ok_or_else(|| "Unable to get manga from response.")?;
+        .ok_or("Unable to get manga from response.")?;
     let id = manga.id;
-    let title = manga
-        .title
-        .ok_or_else(|| "Unable to get title field from manga.")?;
+    let title = manga.title.ok_or("Unable to get title field from manga.")?;
     let cover_image = manga.cover_image.and_then(|img| img.large);
     let description = manga.description;
     let status = manga.status;
@@ -299,57 +297,34 @@ async fn manga_query(
 }
 
 #[derive(Deserialize, Clone)]
-struct LocalWikiSearchResult {
-    url: String,
-    ns: u64,
-    id: u64,
+struct WikiOpenSearchResults(String, Vec<String>, Vec<String>, Vec<String>);
+
+#[derive(Deserialize, Clone)]
+struct WikiQueryResults {
+    batchcomplete: String,
+    query: Query,
+}
+
+#[derive(Deserialize, Clone)]
+struct Query {
+    pages: Vec<Map<String, Value>>,
+}
+
+#[derive(Deserialize, Clone)]
+struct ParseDetails {
+    parse: Parse,
+}
+
+#[derive(Deserialize, Clone)]
+struct Parse {
     title: String,
-    snippet: String,
+    pageid: u64,
+    text: HashMap<String, String>,
 }
 
 #[derive(Deserialize, Clone)]
-struct LocalWikiSearchResultSet {
-    batches: u64,
-    items: Vec<LocalWikiSearchResult>,
-    total: u64,
-    #[serde(rename = "currentBatch")]
-    current_batch: u64,
-    next: u64,
-}
-
-#[derive(Deserialize, Clone)]
-struct Revision {
-    id: u64,
-    user: String,
-    user_id: u64,
-    timestamp: String,
-}
-
-#[derive(Deserialize, Clone)]
-struct OriginalDimension {
-    width: u64,
-    height: u64,
-}
-
-#[derive(Deserialize, Clone)]
-struct ExpandedArticle {
-    original_dimensions: OriginalDimension,
-    url: String,
-    ns: u64,
-    #[serde(rename = "abstract")]
-    synopsis: String,
-    thumbnail: Option<String>,
-    revision: Revision,
-    id: u64,
-    title: String,
-    r#type: String,
-    comments: u64,
-}
-
-#[derive(Deserialize, Clone)]
-struct ExpandedArticleResultSet {
-    items: HashMap<String, ExpandedArticle>,
-    basepath: String,
+struct ArticleImage {
+    image: HashMap<String, String>,
 }
 
 #[command]
@@ -360,15 +335,32 @@ struct ExpandedArticleResultSet {
 async fn vtuber(context: &Context, msg: &Message, args: Args) -> CommandResult {
     let query = args.rest();
     let search = search_vtuber_wiki(query.into()).await?;
-    let details = get_vtuber_article_details(search.id).await?;
+    let title = search.1[0].clone();
+    let url = search.3[0].clone();
+    let text: String = get_vtuber_article_text(title.clone())
+        .await?
+        .parse
+        .text
+        .get("*")
+        .ok_or("Failed to get text")?
+        .clone();
+    let start = text
+        .find("</aside>")
+        .ok_or("Unable to find start of description")?;
+    let image = get_vtuber_article_image(title.clone()).await?;
+    let parsed_text = from_read_with_decorator(
+        text[start..].as_bytes(),
+        256,
+        DiscordMarkdownDecorator::new(),
+    );
+    let end = parsed_text.find("##").ok_or("Unable to find end of description")?;
+    let desc = &parsed_text[..end];
     msg.channel_id
         .send_message(context, |m| {
             m.embed(|e| {
-                e.title(details.title)
-                    .url(strip_stupid_backslashes(search.url))
-                    .description(details.synopsis);
-                if let Some(thumbnail) = details.thumbnail {
-                    e.thumbnail(strip_stupid_backslashes(thumbnail));
+                e.title(&title).url(url).description(desc);
+                if let Some(thumbnail) = image.image.get("imageserving") {
+                    e.thumbnail(thumbnail);
                 }
                 e
             })
@@ -379,42 +371,59 @@ async fn vtuber(context: &Context, msg: &Message, args: Args) -> CommandResult {
 
 async fn search_vtuber_wiki(
     search: String,
-) -> Result<LocalWikiSearchResult, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<WikiOpenSearchResults, Box<dyn std::error::Error + Send + Sync>> {
     let client = ReqwestClient::new();
-    let results: LocalWikiSearchResultSet = client
-        .get(VIRTUALYOUTUBER_WIKI_SEARCH)
-        .query(&[("limit", "1"), ("query", &search)])
+    client
+        .get(VIRTUALYOUTUBER_WIKI_API)
+        .query(&[
+            ("action", "opensearch"),
+            ("limit", "1"),
+            ("search", &search),
+            ("redirects", "resolve"),
+            ("format", "json"),
+        ])
+        .send()
+        .await?
+        .json::<WikiOpenSearchResults>()
+        .await
+        .map_err(|_| Box::try_from(format!("No search results for {}", &search)).unwrap())
+}
+
+async fn get_vtuber_article_text(
+    title: String,
+) -> Result<ParseDetails, Box<dyn std::error::Error + Send + Sync>> {
+    let client = ReqwestClient::new();
+    client
+        .get(VIRTUALYOUTUBER_WIKI_API)
+        .query(&[
+            ("action", "parse"),
+            ("page", &title),
+            ("format", "json"),
+            ("prop", "text"),
+        ])
         .send()
         .await?
         .json()
-        .await?;
-    results
-        .items
-        .get(0)
-        .cloned()
-        .ok_or_else(|| format!("No results for {}", search).into())
+        .await
+        .map_err(|_| Box::try_from(format!("Unable to get article {}", &title)).unwrap())
 }
 
-async fn get_vtuber_article_details(
-    id: u64,
-) -> Result<ExpandedArticle, Box<dyn std::error::Error + Send + Sync>> {
+async fn get_vtuber_article_image(
+    title: String,
+) -> Result<ArticleImage, Box<dyn std::error::Error + Send + Sync>> {
     let client = ReqwestClient::new();
-    let results: ExpandedArticleResultSet = client
-        .get(VIRTUALYOUTUBER_WIKI_DETAILS)
-        .query(&[("abstract", "500"), ("ids", &id.to_string())])
+    client
+        .get(VIRTUALYOUTUBER_WIKI_API)
+        .query(&[
+            ("action", "imageserving"),
+            ("wisTitle", &title),
+            ("format", "json"),
+        ])
         .send()
         .await?
         .json()
-        .await?;
-    results
-        .items
-        .get(&id.to_string())
-        .cloned()
-        .ok_or_else(|| Box::try_from(format!("Unable to get article with ID {}", id)).unwrap())
-}
-
-fn strip_stupid_backslashes(url: String) -> String {
-    url.replace("\\", "")
+        .await
+        .map_err(|_| Box::try_from(format!("Unable to get image for article {}", &title)).unwrap())
 }
 
 fn format_desc(desc: String) -> String {

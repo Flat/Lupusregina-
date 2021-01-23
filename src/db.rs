@@ -11,13 +11,12 @@
  *    distributed under the License is distributed on an "AS IS" BASIS,
  *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *    See the License for the specific language governing permissions and
- *    limitations under the License.
+ *    limitations under the License.q
  */
 
 use crate::util::get_project_dirs;
 use serenity::model::id::GuildId;
-use sqlx::sqlite::SqliteQueryAs;
-use sqlx::SqlitePool;
+use sqlx::{sqlite::SqliteQueryResult, SqlitePool};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
@@ -43,7 +42,7 @@ pub async fn create_db_and_pool() -> Result<SqlitePool, Box<dyn Error>> {
         let db_as_str = &db
             .to_str()
             .ok_or("Unable to convert database path to UTF-8 string.")?;
-        let pool = SqlitePool::new(&format!("sqlite://{}", db_as_str)).await?;
+        let pool = SqlitePool::connect(&format!("sqlite://{}", db_as_str)).await?;
         match sqlx::query(
             "CREATE TABLE IF NOT EXISTS Prefix (guild_id TEXT PRIMARY KEY, prefix TEXT);",
         )
@@ -84,7 +83,7 @@ pub async fn set_guild_prefix(
     pool: &SqlitePool,
     guild_id: GuildId,
     prefix: String,
-) -> Result<u64, Box<dyn Error>> {
+) -> Result<SqliteQueryResult, Box<dyn Error>> {
     sqlx::query("INSERT OR REPLACE INTO Prefix (guild_id, prefix) values (?, ?)")
         .bind(&guild_id.as_u64().to_string())
         .bind(&prefix)

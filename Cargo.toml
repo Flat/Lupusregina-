@@ -1,45 +1,47 @@
 [package]
 name = "lupusreginaβ"
-version = "0.5.3"
+version = "0.5.4"
 authors = ["Ken Swenson <flat@esoteric.moe>"]
 license = "Apache-2.0"
 edition = "2018"
 
 [dependencies]
 anyhow = "1"
-base64 = "0.12"
+base64 = "0.13"
 chrono = "0.4"
 directories = "~3.0"
 dotenv = "~0.15"
-rust-ini = "0.15"
+html2text = "0.2"
+rust-ini = "0.16"
 typemap = "~0.3"
-rand = "~0.7"
+rand = "~0.8"
 tempfile = "3"
 graphql_client = "0.9"
 serde = "1.0"
 serde_json = "1.0"
-tokio = "0.2.22"
+substring = "1.4"
+tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"
 tracing-futures = "0.2"
 lazy_static = "1.4"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-procfs = "0.8"
+procfs = "0.9"
 
 [dependencies.sqlx]
-version = "0.3.5"
+git = "https://github.com/launchbadge/sqlx"
 default-features = false
-features = ["sqlite", "runtime-tokio", "macros"]
+features = ["sqlite", "runtime-tokio-rustls", "macros"]
 
 [dependencies.serenity]
 #git = "https://github.com/serenity-rs/serenity"
-version = "0.9.0"
+version = "0.10.2"
 #branch = "next"
 #path = "../serenity"
 features = ["framework", "standard_framework", "absolute_ratelimits", "rustls_backend", "voice"]
 
 [dependencies.reqwest]
-version = "0.10"
+version = "0.11"
 default-features = false
 features = ["rustls-tls", "json"]

@@ -19,6 +19,7 @@ use anyhow::Result;
 use chrono::DateTime;
 use chrono::Utc;
 use directories::ProjectDirs;
+use html2text::render::text_renderer::{TaggedLine, TextDecorator};
 use ini::Ini;
 use serenity::client::bridge::gateway::ShardManager;
 use serenity::prelude::{Mutex, TypeMapKey};
@@ -73,4 +74,83 @@ pub fn get_configuration() -> Result<Ini> {
         fs::File::create(&config_path)?;
     }
     Ini::load_from_file(config_path).map_err(|e| e.into())
+}
+
+#[derive(Clone)]
+pub struct DiscordMarkdownDecorator {
+    links: Vec<String>,
+}
+
+impl DiscordMarkdownDecorator {
+    /// Create a new `DiscordMarkdownDecorator`.
+    #[cfg_attr(feature = "clippy", allow(new_without_default_derive))]
+    pub fn new() -> DiscordMarkdownDecorator {
+        DiscordMarkdownDecorator { links: Vec::new() }
+    }
+}
+
+impl Default for DiscordMarkdownDecorator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl TextDecorator for DiscordMarkdownDecorator {
+    type Annotation = ();
+
+    fn decorate_link_start(&mut self, _url: &str) -> (String, Self::Annotation) {
+        ("".to_string(), ())
+    }
+
+    fn decorate_link_end(&mut self) -> String {
+        "".to_string()
+    }
+
+    fn decorate_em_start(&mut self) -> (String, Self::Annotation) {
+        ("*".to_string(), ())
+    }
+
+    fn decorate_em_end(&mut self) -> String {
+        "*".to_string()
+    }
+
+    fn decorate_strong_start(&mut self) -> (String, Self::Annotation) {
+        ("**".to_string(), ())
+    }
+
+    fn decorate_strong_end(&mut self) -> String {
+        "**".to_string()
+    }
+
+    fn decorate_strikeout_start(&mut self) -> (String, Self::Annotation) {
+        ("--".to_string(), ())
+    }
+
+    fn decorate_strikeout_end(&mut self) -> String {
+        "--".to_string()
+    }
+
+    fn decorate_code_start(&mut self) -> (String, Self::Annotation) {
+        ("```".to_string(), ())
+    }
+
+    fn decorate_code_end(&mut self) -> String {
+        "```".to_string()
+    }
+
+    fn decorate_preformat_first(&mut self) -> Self::Annotation {}
+
+    fn decorate_preformat_cont(&mut self) -> Self::Annotation {}
+
+    fn decorate_image(&mut self, title: &str) -> (String, Self::Annotation) {
+        (title.to_string(), ())
+    }
+
+    fn finalise(self) -> Vec<TaggedLine<()>> {
+        Vec::new()
+    }
+
+    fn make_subblock_decorator(&self) -> Self {
+        DiscordMarkdownDecorator::new()
+    }
 }
