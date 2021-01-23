@@ -207,6 +207,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             c.dynamic_prefix(dynamic_prefix)
                 .on_mention(Some(bot_id))
                 .owners(owners)
+                .prefix("")
         })
         .after(after)
         .on_dispatch_error(dispatch_error)
