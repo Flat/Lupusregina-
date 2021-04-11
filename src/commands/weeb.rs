@@ -353,7 +353,9 @@ async fn vtuber(context: &Context, msg: &Message, args: Args) -> CommandResult {
         256,
         DiscordMarkdownDecorator::new(),
     );
-    let end = parsed_text.find("##").ok_or("Unable to find end of description")?;
+    let end = parsed_text
+        .find("##")
+        .ok_or("Unable to find end of description")?;
     let desc = &parsed_text[..end];
     msg.channel_id
         .send_message(context, |m| {

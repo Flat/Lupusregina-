@@ -276,6 +276,7 @@ async fn set(context: &Context, _msg: &Message, mut args: Args) -> CommandResult
         "PLAYING" => ActivityType::Playing,
         "LISTENING" => ActivityType::Listening,
         "STREAMING" => ActivityType::Streaming,
+        "WATCHING" => ActivityType::Watching,
         _ => return Err("Invalid type".into()),
     };
     match kind {
@@ -293,6 +294,11 @@ async fn set(context: &Context, _msg: &Message, mut args: Args) -> CommandResult
             let url = args.single::<String>()?;
             context
                 .set_presence(Some(Activity::streaming(args.rest(), &url)), status)
+                .await
+        }
+        ActivityType::Watching => {
+            context
+                .set_presence(Some(Activity::watching(args.rest())), status)
                 .await
         }
         _ => return Err("Invalid type".into()),

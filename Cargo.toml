@@ -1,6 +1,6 @@
 [package]
 name = "lupusreginaβ"
-version = "0.5.5"
+version = "0.5.6"
 authors = ["Ken Swenson <flat@esoteric.moe>"]
 license = "Apache-2.0"
 edition = "2018"
@@ -12,7 +12,7 @@ chrono = "0.4"
 directories = "~3.0"
 dotenv = "~0.15"
 html2text = "0.2"
-rust-ini = "0.16"
+rust-ini = "0.17"
 typemap = "~0.3"
 rand = "~0.8"
 tempfile = "3"
@@ -35,9 +35,9 @@ default-features = false
 features = ["sqlite", "runtime-tokio-rustls", "macros"]
 
 [dependencies.serenity]
-#git = "https://github.com/serenity-rs/serenity"
-version = "0.10.2"
-#branch = "next"
+git = "https://github.com/serenity-rs/serenity"
+#version = "0.10.2"
+branch = "current"
 #path = "../serenity"
 features = ["framework", "standard_framework", "absolute_ratelimits", "rustls_backend", "voice"]
 

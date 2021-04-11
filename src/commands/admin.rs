@@ -20,7 +20,7 @@ use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::channel::Message;
 
 use crate::db;
-use crate::util::{DBPool, Prefixes};
+use crate::util::{DbPool, Prefixes};
 
 #[command]
 #[description = "Sets the prefix for the current Guild."]
@@ -34,7 +34,7 @@ async fn setprefix(context: &Context, msg: &Message, mut args: Args) -> CommandR
         .data
         .read()
         .await
-        .get::<DBPool>()
+        .get::<DbPool>()
         .ok_or("Unable to get DB Pool.")?
         .clone();
     {

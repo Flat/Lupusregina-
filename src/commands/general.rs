@@ -48,7 +48,7 @@ async fn about(context: &Context, msg: &Message) -> CommandResult {
         .send_message(&context, |m| {
             m.embed(|e| {
                 e.url(&invite_url)
-                    .colour(Colour::new(0xD25_148))
+                    .colour(Colour::new(0x00D2_5148))
                     .description("A battle maid for the Great Tomb of Nazarick")
                     .title(&crate::BOT_NAME)
                     .author(|mut a| {

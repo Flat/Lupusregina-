@@ -242,7 +242,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         let mut data = client.data.write().await;
         data.insert::<util::Config>(Arc::clone(&Arc::new(conf)));
-        data.insert::<util::DBPool>(Arc::clone(&Arc::new(db_connection_pool)));
+        data.insert::<util::DbPool>(Arc::clone(&Arc::new(db_connection_pool)));
         data.insert::<util::ClientShardManager>(Arc::clone(&client.shard_manager));
         data.insert::<util::Uptime>(HashMap::default());
         data.insert::<util::Prefixes>(prefixes);

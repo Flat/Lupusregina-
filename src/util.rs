@@ -51,9 +51,9 @@ impl TypeMapKey for Prefixes {
     type Value = HashMap<u64, String>;
 }
 
-pub struct DBPool;
+pub struct DbPool;
 
-impl TypeMapKey for DBPool {
+impl TypeMapKey for DbPool {
     type Value = Arc<sqlx::SqlitePool>;
 }
 
