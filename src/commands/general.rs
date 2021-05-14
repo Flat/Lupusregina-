@@ -168,7 +168,6 @@ async fn guildinfo(context: &Context, msg: &Message) -> CommandResult {
                 })
                 .field("Guild ID", format!("{}", guild_id), true)
                 .field("Members", guild.member_count, true)
-                .field("Region", &guild.region, true)
                 .field("Features", format!("{:?}", guild.features), true)
                 .field(
                     "Nitro Boost Level",

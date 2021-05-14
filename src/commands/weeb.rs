@@ -135,7 +135,7 @@ async fn anime(context: &Context, msg: &Message, args: Args) -> CommandResult {
                         "Genres",
                         genres
                             .into_iter()
-                            .filter_map(|g| g)
+                            .flatten()
                             .collect::<Vec<String>>()
                             .join(", "),
                         true,
@@ -245,7 +245,7 @@ async fn manga(context: &Context, msg: &Message, args: Args) -> CommandResult {
                         "Genres",
                         genres
                             .into_iter()
-                            .filter_map(|g| g)
+                            .flatten()
                             .collect::<Vec<String>>()
                             .join(", "),
                         true,
