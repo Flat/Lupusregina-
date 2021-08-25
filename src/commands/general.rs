@@ -22,6 +22,7 @@ use serenity::model::channel::Message;
 use serenity::model::permissions::Permissions;
 use serenity::prelude::Context;
 use serenity::utils::Colour;
+use serenity::model::prelude::Interaction;
 
 #[command]
 #[description = "Shows information about the bot."]
@@ -65,32 +66,12 @@ async fn about(context: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
-#[command]
-#[description = "Shows the avatar for the user or specified user."]
-async fn avatar(context: &Context, msg: &Message, args: Args) -> CommandResult {
-    let face = if msg.mentions.is_empty() {
-        if args.is_empty() {
-            msg.author.face()
-        } else {
-            msg.guild_id
-                .ok_or("Failed to get GuildId from Message")?
-                .to_guild_cached(&context)
-                .await
-                .ok_or("Failed to get Guild from GuildId")?
-                .members_starting_with(args.rest(), false, true)
-                .await
-                .first()
-                .ok_or("Could not find member")?
-                .0
-                .user
-                .face()
-        }
+pub async fn avatar(context: &Context, interaction: Interaction) -> CommandResult {
+    if let Some(interactionData) = interaction.data {
+
     } else {
-        msg.mentions[0].face()
-    };
-    msg.channel_id
-        .send_message(&context, |m| m.embed(|e| e.image(face)))
-        .await?;
+        interaction.create_interaction_respon
+    }
     Ok(())
 }
 

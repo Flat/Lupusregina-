@@ -885,7 +885,7 @@ dependencies = [
 
 [[package]]
 name = "lupusreginaβ"
-version = "0.5.7"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "base64 0.13.0",

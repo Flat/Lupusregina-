@@ -32,16 +32,16 @@ use serenity::model::id::UserId;
 use serenity::model::prelude::{GuildId, Message};
 use serenity::prelude::*;
 
-use crate::commands::{admin::*, fun::*, general::*, moderation::*, owner::*, weeb::*};
-use crate::util::{get_configuration, Prefixes};
 use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::framework::standard::DispatchError::Ratelimited;
 use serenity::http::Http;
+use serenity::model::channel::MessageType::ApplicationCommand;
+use serenity::model::interactions::Interaction;
 
 use tracing::{error, info};
 
+
 pub mod commands;
-pub mod db;
 pub mod util;
 
 struct Handler;
@@ -51,7 +51,6 @@ impl EventHandler for Handler {
     async fn cache_ready(&self, _ctx: Context, guilds: Vec<GuildId>) {
         info!("Connected to {} guilds.", guilds.len());
     }
-
     async fn ready(&self, ctx: Context, ready: Ready) {
         if let Some(shard) = ready.shard {
             info!(
@@ -64,118 +63,43 @@ impl EventHandler for Handler {
             info!("Connected as {}", ready.user.name);
         }
 
-        let data = ctx.data.write();
+        let mut data = ctx.data.write();
         match data.await.get_mut::<util::Uptime>() {
             Some(uptime) => {
                 uptime.entry(String::from("boot")).or_insert_with(Utc::now);
             }
             None => error!("Unable to insert boot time into client data."),
         };
+        let slash_commands = ApplicationCommand::set_global_application_commands(&ctx.http, |commands| {
+            commands.create_application_command(|command| {
+                command.name("avatar").description("Shows the avatar for the user or specified user.").create_option(|option| {
+                    option.name("user").description("The target user").kind(ApplicationCommandType::User).required(false)
+                })
+            })
+        }).await;
+
+        info!("The following global slash commands are registered: {:#?}", slash_commands);
     }
 
     async fn resume(&self, _: Context, _: ResumedEvent) {
         info!("Resumed");
+    }
+
+    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+        info!("Received command {:?} from user {:?}", interaction.data.name.as_str(), interaction.user);
+        let result = match command.data.name.as_str() {
+            "avatar" => crate::commands::general::avatar(&ctx, interaction).await
+        };
+        match result {
+            Ok(_) => (),
+            Err(why) => error!("Command failed: {:?}", why)
+        }
     }
 }
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const BOT_NAME: &str = env!("CARGO_PKG_NAME");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
-
-#[group]
-#[commands(about, avatar, userinfo, guildinfo, ping)]
-struct General;
-
-#[group]
-#[commands(bloodborne, darksouls, darksouls3, ddate, eightball)]
-struct Fun;
-
-#[group]
-#[commands(setprefix)]
-struct Admin;
-
-#[group]
-#[owners_only]
-#[owner_privilege]
-#[commands(info, reload, nickname, rename, setavatar)]
-#[sub_groups(Presence)]
-struct Owner;
-
-#[group]
-#[prefix("presence")]
-#[owners_only]
-#[commands(online, idle, dnd, invisible, reset, set)]
-struct Presence;
-
-#[group]
-#[commands(ban, unban, setslowmode)]
-struct Moderation;
-
-#[group]
-#[commands(anime, manga, vtuber)]
-struct Weeb;
-
-#[help]
-async fn my_help(
-    context: &Context,
-    msg: &Message,
-    args: Args,
-    help_options: &'static HelpOptions,
-    groups: &[&'static CommandGroup],
-    owners: HashSet<UserId>,
-) -> CommandResult {
-    help_commands::with_embeds(context, msg, args, help_options, groups, owners).await;
-    Ok(())
-}
-
-#[hook]
-async fn after(ctx: &Context, msg: &Message, command_name: &str, command_result: CommandResult) {
-    match command_result {
-        Ok(()) => msg.react(ctx, '\u{2705}').await.map_or_else(|_| (), |_| ()),
-        Err(e) => {
-            error!(
-                "Command {:?} triggered by {}: {:?}",
-                command_name,
-                msg.author.tag(),
-                e
-            );
-            msg.react(ctx, '\u{274C}').await.map_or_else(|_| (), |_| ());
-        }
-    }
-}
-
-#[hook]
-async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> () {
-    match &error {
-        Ratelimited(e) => {
-            error!("{} failed: {:?}", msg.content, error);
-            let _ = msg
-                .channel_id
-                .say(&ctx, format!("Ratelimited: Try again in {:#?} seconds.", e));
-        }
-        _ => error!("{} failed: {:?}", msg.content, error),
-    }
-}
-
-#[hook]
-async fn dynamic_prefix(ctx: &Context, msg: &Message) -> Option<String> {
-    if msg.is_private() {
-        return Some("".into());
-    }
-    if let Some(guild_id) = msg.guild_id {
-        let prefixes = async { ctx.data.read().await.get::<Prefixes>().cloned() }.await;
-        let prefix = prefixes.map_or_else(
-            || ".".into(),
-            |pref| {
-                pref.get(guild_id.as_u64())
-                    .map_or_else(|| ".".into(), |prefix| prefix.into())
-            },
-        );
-        Some(prefix)
-    } else {
-        Some(".".into())
-    }
-}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -184,46 +108,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let token = env::var("BOT_TOKEN")?;
 
-    let conf = get_configuration()?;
-
-    let db_connection_pool = match db::create_db_and_pool().await {
-        Ok(pool) => pool,
-        Err(why) => panic!("Unable to open connection pool: {:?}", why),
-    };
-
     let http = Http::new_with_token(&token);
 
-    let (owners, bot_id) = match http.get_current_application_info().await {
+    match http.get_current_application_info().await {
         Ok(info) => {
             let mut owners = HashSet::new();
             owners.insert(info.owner.id);
-            (owners, info.id)
         }
         Err(why) => panic!("Could not access application info: {:?}", why),
     };
 
-    let framework = StandardFramework::new()
-        .configure(|c| {
-            c.dynamic_prefix(dynamic_prefix)
-                .on_mention(Some(bot_id))
-                .owners(owners)
-                .prefix("")
-        })
-        .after(after)
-        .on_dispatch_error(dispatch_error)
-        .bucket("anilist", |b| b.time_span(60).limit(90))
-        .await
-        .help(&MY_HELP)
-        .group(&GENERAL_GROUP)
-        .group(&FUN_GROUP)
-        .group(&ADMIN_GROUP)
-        .group(&OWNER_GROUP)
-        .group(&MODERATION_GROUP)
-        .group(&WEEB_GROUP);
-
     let mut client = Client::builder(&token)
         .event_handler(Handler)
-        .framework(framework)
         .intents(
             GatewayIntents::GUILD_MESSAGES
                 | GatewayIntents::DIRECT_MESSAGES
@@ -236,16 +132,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await
         .expect("Error creating client!");
 
-    let prefixes = db::get_all_prefixes(&db_connection_pool)
-        .await
-        .unwrap_or_else(|_| HashMap::<u64, String>::new());
     {
         let mut data = client.data.write().await;
-        data.insert::<util::Config>(Arc::clone(&Arc::new(conf)));
-        data.insert::<util::DbPool>(Arc::clone(&Arc::new(db_connection_pool)));
         data.insert::<util::ClientShardManager>(Arc::clone(&client.shard_manager));
         data.insert::<util::Uptime>(HashMap::default());
-        data.insert::<util::Prefixes>(prefixes);
     }
 
     client.start_autosharded().await.map_err(|e| e.into())

@@ -1,6 +1,6 @@
 [package]
 name = "lupusreginaβ"
-version = "0.5.7"
+version = "0.6.0"
 authors = ["Ken Swenson <flat@esoteric.moe>"]
 license = "Apache-2.0"
 edition = "2018"
@@ -39,7 +39,7 @@ git = "https://github.com/serenity-rs/serenity"
 #version = "0.10.2"
 branch = "current"
 #path = "../serenity"
-features = ["framework", "standard_framework", "absolute_ratelimits", "rustls_backend", "voice"]
+features = ["framework", "standard_framework", "absolute_ratelimits", "rustls_backend", "voice", "unstable_discord_api"]
 
 [dependencies.reqwest]
 version = "0.11"
