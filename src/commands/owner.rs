@@ -15,6 +15,7 @@
  */
 
 use chrono::Utc;
+use poise::send_application_reply;
 use poise::serenity_prelude::json::hashmap_to_json_map;
 use poise::serenity_prelude::{Activity, Colour, OnlineStatus};
 #[cfg(target_os = "linux")]
@@ -114,7 +115,7 @@ pub async fn reload(context: Context<'_>) -> Result<(), Error> {
         let mut ini = context.data().config.lock().await;
         *ini = conf;
     }
-    context.say("context, Reloaded config!").await?;
+    context.say("Reloaded config!").await?;
     Ok(())
 }
 
@@ -136,6 +137,9 @@ pub async fn rename(
         .current_user()
         .edit(&context.discord(), |p| p.username(username))
         .await?;
+    context
+        .send(|m| m.content("Name set.").ephemeral(true))
+        .await?;
     Ok(())
 }
 
@@ -156,7 +160,9 @@ pub async fn nickname(
             .edit_nickname(u64::from(guild_id), nickname.as_deref())
             .await?
     }
-
+    context
+        .send(|m| m.content("Nickname set.").ephemeral(true))
+        .await?;
     Ok(())
 }
 
@@ -176,6 +182,9 @@ pub async fn setavatar(
     )));
     let map = hashmap_to_json_map(p.0);
     context.discord().http.edit_profile(&map).await?;
+    context
+        .send(|m| m.content("Set avatar.").ephemeral(true))
+        .await?;
     Ok(())
 }
 
@@ -275,5 +284,6 @@ pub async fn presence(
             }
         }
     };
+    send_application_reply(context, |m| m.content("Set presence.").ephemeral(true)).await?;
     Ok(())
 }

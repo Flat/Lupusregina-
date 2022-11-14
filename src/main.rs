@@ -49,6 +49,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
         poise::FrameworkError::Setup { error, .. } => panic!("Failed to start bot: {:?}", error),
         poise::FrameworkError::Command { error, ctx } => {
             error!("Error in command `{}`: {:?}", ctx.command().name, error,);
+            let _ = ctx.send(|m| m.content("Error processing command or no results were returned by the remote server.").ephemeral(true)).await;
         }
         error => {
             if let Err(e) = poise::builtins::on_error(error).await {
@@ -114,7 +115,7 @@ async fn main() -> Result<(), poise::serenity_prelude::Error> {
                 if let Event::Ready { data_about_bot } = event {
                     let mut shards = String::new();
                     if let Some(shard) = data_about_bot.shard {
-                        shards = format!(" on shard {}/{}", shard[0], shard[1]);
+                        shards = format!(" on shard {}/{}", shard[0] + 1, shard[1]);
                     }
                     info!("Connected as {:?}{}", data_about_bot.user, shards)
                 }
