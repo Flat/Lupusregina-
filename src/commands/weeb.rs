@@ -19,12 +19,12 @@ use graphql_client::{GraphQLQuery, Response};
 use html2text::from_read_with_decorator;
 use serde::Deserialize;
 
+use crate::{Context, Error};
+use poise::serenity_prelude::Colour;
 use reqwest::Client as ReqwestClient;
 use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use poise::serenity_prelude::Colour;
-use crate::{Context, Error};
 
 use crate::util::DiscordMarkdownDecorator;
 
@@ -50,8 +50,11 @@ const ANILIST_MANGA_PATH: &str = "https://anilist.co/manga/";
 const ANILIST_ANIME_PATH: &str = "https://anilist.co/anime/";
 const VIRTUALYOUTUBER_WIKI_API: &str = "https://virtualyoutuber.fandom.com/api.php";
 
-
-#[poise::command(slash_command, description_localized("en-US", "Shows information about an Anime from Anilist"), global_cooldown = 1)]
+#[poise::command(
+    slash_command,
+    description_localized("en-US", "Shows information about an Anime from Anilist"),
+    global_cooldown = 1
+)]
 pub async fn anime(context: Context<'_>, anime_title: String) -> Result<(), Error> {
     let anime = anime_query(anime_query::Variables {
         title: Some(anime_title),
@@ -156,8 +159,11 @@ pub async fn anime(context: Context<'_>, anime_title: String) -> Result<(), Erro
     Ok(())
 }
 
-
-#[poise::command(slash_command, description_localized("en-US", "Shows information about a manga from Anilist"), global_cooldown = 1)]
+#[poise::command(
+    slash_command,
+    description_localized("en-US", "Shows information about a manga from Anilist"),
+    global_cooldown = 1
+)]
 pub async fn manga(context: Context<'_>, manga_title: String) -> Result<(), Error> {
     let manga = manga_query(manga_query::Variables {
         title: Some(manga_title),
@@ -320,7 +326,11 @@ struct ArticleImage {
     image: HashMap<String, String>,
 }
 
-#[poise::command(slash_command, description_localized("en-US", "Shows information about a Virtual Youtuber"), global_cooldown = 1)]
+#[poise::command(
+    slash_command,
+    description_localized("en-US", "Shows information about a Virtual Youtuber"),
+    global_cooldown = 1
+)]
 pub async fn vtuber(context: Context<'_>, name: String) -> Result<(), Error> {
     let search = search_vtuber_wiki(name).await?;
     let title = search.1[0].clone();

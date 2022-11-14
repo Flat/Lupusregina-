@@ -20,10 +20,10 @@ use std::time::Duration;
 
 use chrono::Utc;
 use dotenv::dotenv;
-use poise::{Event, serenity_prelude as serenity};
+use poise::{serenity_prelude as serenity, Event};
 use tokio::sync::Mutex;
-use tracing::{error, info};
 use tracing::log::trace;
+use tracing::{error, info};
 
 use util::Data;
 
@@ -88,8 +88,7 @@ async fn main() -> Result<(), poise::serenity_prelude::Error> {
             commands::fun::darksouls(),
             commands::fun::darksouls3(),
             commands::fun::eightball(),
-            commands::fun::ddate()
-
+            commands::fun::ddate(),
         ],
         prefix_options: poise::PrefixFrameworkOptions {
             prefix: Some("~".into()),
@@ -112,15 +111,12 @@ async fn main() -> Result<(), poise::serenity_prelude::Error> {
         },
         listener: |_ctx, event, _framework, _data| {
             Box::pin(async move {
-                match event {
-                    Event::Ready { data_about_bot } => {
-                        let mut shards = String::new();
-                        if let Some(shard) = data_about_bot.shard {
-                            shards = format!(" on shard {}/{}", shard[0], shard[1]);
-                        }
-                        info!("Connected as {:?}{}", data_about_bot.user, shards)
-                    },
-                    _ => {}
+                if let Event::Ready { data_about_bot } = event {
+                    let mut shards = String::new();
+                    if let Some(shard) = data_about_bot.shard {
+                        shards = format!(" on shard {}/{}", shard[0], shard[1]);
+                    }
+                    info!("Connected as {:?}{}", data_about_bot.user, shards)
                 }
                 Ok(())
             })
@@ -129,10 +125,7 @@ async fn main() -> Result<(), poise::serenity_prelude::Error> {
     };
 
     poise::Framework::builder()
-        .token(
-            env::var("BOT_TOKEN")
-                .expect("Missing `BOT_TOKEN` env var."),
-        )
+        .token(env::var("BOT_TOKEN").expect("Missing `BOT_TOKEN` env var."))
         .user_data_setup(move |_ctx, _ready, framework| {
             Box::pin(async move {
                 Ok(Data {

@@ -15,14 +15,18 @@
  */
 
 use chrono::Utc;
-use poise::serenity_prelude::{Activity, Colour, OnlineStatus};
 use poise::serenity_prelude::json::hashmap_to_json_map;
+use poise::serenity_prelude::{Activity, Colour, OnlineStatus};
 #[cfg(target_os = "linux")]
 use procfs::process::Process;
 
-use crate::{Context, Error, serenity, util};
+use crate::{serenity, util, Context, Error};
 
-#[poise::command(slash_command, owners_only, description_localized("en-US", "Shows information about the bot"))]
+#[poise::command(
+    slash_command,
+    owners_only,
+    description_localized("en-US", "Shows information about the bot")
+)]
 pub async fn info(context: Context<'_>) -> Result<(), Error> {
     let boot_time = context.data().uptime.clone();
     let now = Utc::now();
@@ -38,7 +42,6 @@ pub async fn info(context: Context<'_>) -> Result<(), Error> {
     hours %= 24;
     let uptime = format!("{}d{}h{}m{}s", days, hours, minutes, seconds);
 
-
     let cache = &context.discord().cache;
     let current_user = cache.current_user();
     let name = current_user.name.to_owned();
@@ -52,40 +55,42 @@ pub async fn info(context: Context<'_>) -> Result<(), Error> {
         &crate::BOT_NAME,
         &crate::VERSION
     );
-    desc.push_str(&format!("\n**Uptime**: `{}`", &uptime));
+    use std::fmt::Write as _;
+    let _ = write!(desc, "\n**Uptime**: `{}`", &uptime);
 
     #[cfg(target_os = "linux")]
     if let Ok(process) = Process::myself() {
         if let Ok(page_size) = procfs::page_size() {
             if let Ok(statm) = process.statm() {
-                desc.push_str(&format!(
+                let _ = write!(
+                    desc,
                     "\n**Memory Usage**: `{:.2}MB`",
                     ((statm.resident * page_size as u64) - (statm.shared * page_size as u64))
                         as f64
                         / 1048576_f64
-                ));
+                );
             }
         }
         if let Ok(ticks) = procfs::ticks_per_second() {
             if let Ok(kstats) = procfs::KernelStats::new() {
                 let cpu_usage = 100
                     * (((process.stat.utime
-                    + process.stat.stime
-                    + process.stat.cutime as u64
-                    + process.stat.cstime as u64)
-                    / ticks as u64)
-                    / (kstats.btime - (process.stat.starttime / ticks as u64)));
-                desc.push_str(&format!("\n**CPU Usage**: `{}%`", cpu_usage))
+                        + process.stat.stime
+                        + process.stat.cutime as u64
+                        + process.stat.cstime as u64)
+                        / ticks as u64)
+                        / (kstats.btime - (process.stat.starttime / ticks as u64)));
+                let _ = write!(desc, "\n**CPU Usage**: `{}%`", cpu_usage);
             }
         }
     };
 
-    desc.push_str(&format!("\n**Guilds**: `{}`", guilds));
-    desc.push_str(&format!("\n**Users**: `{}`", users));
-    desc.push_str(&format!("\n**DM Channels**: `{}`", channels));
+    let _ = write!(desc, "\n**Guilds**: `{}`", guilds);
+    let _ = write!(desc, "\n**Users**: `{}`", users);
+    let _ = write!(desc, "\n**DM Channels**: `{}`", channels);
 
     context
-        .send( |m| {
+        .send(|m| {
             m.embed(|e| {
                 e.colour(Colour::FABLED_PINK)
                     .author(|mut a| {
@@ -95,7 +100,8 @@ pub async fn info(context: Context<'_>) -> Result<(), Error> {
                     })
                     .title("Running Information")
                     .description(desc)
-            }).ephemeral(true)
+            })
+            .ephemeral(true)
         })
         .await?;
     Ok(())
@@ -112,9 +118,20 @@ pub async fn reload(context: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-#[poise::command(slash_command, owners_only, description_localized("en-US", "Changes the bot's username. YOU MAY LOSE THE DISCRIMINATOR UPON CHANGING BACK!"))]
-pub async fn rename(context: Context<'_>, #[description = "New username for the bot"] username: String) -> Result<(), Error> {
-    context.discord()
+#[poise::command(
+    slash_command,
+    owners_only,
+    description_localized(
+        "en-US",
+        "Changes the bot's username. YOU MAY LOSE THE DISCRIMINATOR UPON CHANGING BACK!"
+    )
+)]
+pub async fn rename(
+    context: Context<'_>,
+    #[description = "New username for the bot"] username: String,
+) -> Result<(), Error> {
+    context
+        .discord()
         .cache
         .current_user()
         .edit(&context.discord(), |p| p.username(username))
@@ -122,19 +139,41 @@ pub async fn rename(context: Context<'_>, #[description = "New username for the 
     Ok(())
 }
 
-#[poise::command(slash_command, owners_only, guild_only, description_localized("en-US", "Changes the bot's nickname"))]
-pub async fn nickname(context: Context<'_>, #[description = "New username for the bot"] nickname: Option<String>) -> Result<(), Error> {
-        if let Some(guild_id) = context.guild_id() {
-            context.discord().http.edit_nickname(u64::from(guild_id), nickname.as_deref()).await?
-        }
+#[poise::command(
+    slash_command,
+    owners_only,
+    guild_only,
+    description_localized("en-US", "Changes the bot's nickname")
+)]
+pub async fn nickname(
+    context: Context<'_>,
+    #[description = "New username for the bot"] nickname: Option<String>,
+) -> Result<(), Error> {
+    if let Some(guild_id) = context.guild_id() {
+        context
+            .discord()
+            .http
+            .edit_nickname(u64::from(guild_id), nickname.as_deref())
+            .await?
+    }
 
     Ok(())
 }
 
 #[poise::command(slash_command, owners_only)]
-pub async fn setavatar(context: Context<'_>, attachment: serenity::Attachment) -> Result<(), Error> {
+pub async fn setavatar(
+    context: Context<'_>,
+    attachment: serenity::Attachment,
+) -> Result<(), Error> {
     let mut p = serenity::builder::EditProfile::default();
-    p.avatar(Some(&format!("data:{};base64,{}",attachment.content_type.as_ref().ok_or_else(|| "Unable to determine content type")?,base64::encode(attachment.download().await?))));
+    p.avatar(Some(&format!(
+        "data:{};base64,{}",
+        attachment
+            .content_type
+            .as_ref()
+            .ok_or("Unable to determine content type")?,
+        base64::encode(attachment.download().await?)
+    )));
     let map = hashmap_to_json_map(p.0);
     context.discord().http.edit_profile(&map).await?;
     Ok(())
@@ -146,10 +185,10 @@ pub enum OnlineStatusChoice {
     Idle,
     DoNotDisturb,
     Invisible,
-    Offline
+    Offline,
 }
 
-impl From<OnlineStatusChoice> for OnlineStatus{
+impl From<OnlineStatusChoice> for OnlineStatus {
     fn from(online_status: OnlineStatusChoice) -> Self {
         match online_status {
             OnlineStatusChoice::DoNotDisturb => OnlineStatus::DoNotDisturb,
@@ -170,37 +209,69 @@ pub enum ActivityTypeChoice {
     Competing,
 }
 
-
 #[derive(Debug, poise::Modal)]
 struct StatusTextModal {
-    text: String
+    text: String,
 }
 
 #[derive(Debug, poise::Modal)]
 struct TwitchModal {
     url: String,
-    text: String
+    text: String,
 }
 
 #[poise::command(slash_command, owners_only)]
-pub async fn presence(context: poise::ApplicationContext<'_, crate::Data, Error>, status: OnlineStatusChoice, activity: Option<ActivityTypeChoice>) -> Result<(), Error> {
+pub async fn presence(
+    context: poise::ApplicationContext<'_, crate::Data, Error>,
+    status: OnlineStatusChoice,
+    activity: Option<ActivityTypeChoice>,
+) -> Result<(), Error> {
     if let Some(activity_type_choice) = activity {
         match activity_type_choice {
-            ActivityTypeChoice::Listening | ActivityTypeChoice::Playing | ActivityTypeChoice::Watching | ActivityTypeChoice::Competing => {
+            ActivityTypeChoice::Listening
+            | ActivityTypeChoice::Playing
+            | ActivityTypeChoice::Watching
+            | ActivityTypeChoice::Competing => {
                 use poise::Modal as _;
                 let data = StatusTextModal::execute(context).await?;
                 match activity_type_choice {
-                    ActivityTypeChoice::Playing => { context.discord.set_presence(Some(Activity::playing(data.text)), status.into()).await; }
-                    ActivityTypeChoice::Listening => { context.discord.set_presence(Some(Activity::listening(data.text)), status.into()).await; }
+                    ActivityTypeChoice::Playing => {
+                        context
+                            .discord
+                            .set_presence(Some(Activity::playing(data.text)), status.into())
+                            .await;
+                    }
+                    ActivityTypeChoice::Listening => {
+                        context
+                            .discord
+                            .set_presence(Some(Activity::listening(data.text)), status.into())
+                            .await;
+                    }
                     ActivityTypeChoice::Streaming => {}
-                    ActivityTypeChoice::Watching => { context.discord.set_presence(Some(Activity::watching(data.text)), status.into()).await; }
-                    ActivityTypeChoice::Competing => { context.discord.set_presence(Some(Activity::competing(data.text)), status.into()).await; }
+                    ActivityTypeChoice::Watching => {
+                        context
+                            .discord
+                            .set_presence(Some(Activity::watching(data.text)), status.into())
+                            .await;
+                    }
+                    ActivityTypeChoice::Competing => {
+                        context
+                            .discord
+                            .set_presence(Some(Activity::competing(data.text)), status.into())
+                            .await;
+                    }
                 }
-            },
+            }
             ActivityTypeChoice::Streaming => {
                 use poise::Modal as _;
                 let data = TwitchModal::execute(context).await?;
-                context.discord.set_presence(Some(Activity::streaming(data.text, data.url)), status.into()).await;
+                context
+                    .discord
+                    .set_presence(
+                        Some(Activity::streaming(data.text, data.url)),
+                        status.into(),
+                    )
+                    .await;
             }
         }
     };
