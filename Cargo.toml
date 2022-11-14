@@ -1,6 +1,6 @@
 [package]
 name = "lupusreginaβ"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Ken Swenson <flat@esoteric.moe>"]
 license = "Apache-2.0"
 edition = "2018"
@@ -29,17 +29,9 @@ lazy_static = "1.4"
 [target.'cfg(target_os = "linux")'.dependencies]
 procfs = "0.9"
 
-[dependencies.sqlx]
-git = "https://github.com/launchbadge/sqlx"
-default-features = false
-features = ["sqlite", "runtime-tokio-rustls", "macros"]
-
-[dependencies.serenity]
-git = "https://github.com/serenity-rs/serenity"
-#version = "0.10.2"
-branch = "current"
-#path = "../serenity"
-features = ["framework", "standard_framework", "absolute_ratelimits", "rustls_backend", "voice", "unstable_discord_api"]
+[dependencies.poise]
+version = "0.4.1"
+features = ["collector"]
 
 [dependencies.reqwest]
 version = "0.11"

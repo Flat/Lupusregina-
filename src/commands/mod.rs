@@ -14,9 +14,7 @@
  *    limitations under the License.
  */
 
-pub mod admin;
 pub mod fun;
 pub mod general;
-pub mod moderation;
 pub mod owner;
 pub mod weeb;

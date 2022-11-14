@@ -14,6 +14,9 @@
  *    limitations under the License.
  */
 
+use std::fs;
+use std::sync::Arc;
+
 use anyhow::anyhow;
 use anyhow::Result;
 use chrono::DateTime;
@@ -21,34 +24,13 @@ use chrono::Utc;
 use directories::ProjectDirs;
 use html2text::render::text_renderer::{TaggedLine, TextDecorator};
 use ini::Ini;
-use serenity::client::bridge::gateway::ShardManager;
-use serenity::prelude::{Mutex, TypeMapKey};
-use std::collections::HashMap;
-use std::fs;
-use std::sync::Arc;
+use poise::serenity_prelude::ShardManager;
+use tokio::sync::Mutex;
 
-pub struct Config;
-
-impl TypeMapKey for Config {
-    type Value = Arc<Ini>;
-}
-
-pub struct Uptime;
-
-impl TypeMapKey for Uptime {
-    type Value = HashMap<String, DateTime<Utc>>;
-}
-
-pub struct ClientShardManager;
-
-impl TypeMapKey for ClientShardManager {
-    type Value = Arc<Mutex<ShardManager>>;
-}
-
-pub struct Prefixes;
-
-impl TypeMapKey for Prefixes {
-    type Value = HashMap<u64, String>;
+pub struct Data {
+    pub(crate) config: Mutex<Ini>,
+    pub(crate) uptime: Arc<DateTime<Utc>>,
+    pub(crate) shard_manager: Arc<Mutex<ShardManager>>,
 }
 
 pub fn get_project_dirs() -> Option<ProjectDirs> {

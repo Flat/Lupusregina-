@@ -14,39 +14,26 @@
  *    limitations under the License.
  */
 
-use crate::util::ClientShardManager;
-use chrono::Utc;
-use serenity::client::bridge::gateway::ShardId;
-use serenity::framework::standard::{macros::command, Args, CommandResult};
-use serenity::model::channel::Message;
-use serenity::model::permissions::Permissions;
-use serenity::prelude::Context;
-use serenity::utils::Colour;
-use serenity::model::prelude::Interaction;
 
-#[command]
-#[description = "Shows information about the bot."]
-async fn about(context: &Context, msg: &Message) -> CommandResult {
-    let face = context.cache.current_user().await.face();
-    let invite_url = context
+use chrono::Utc;
+use poise::serenity_prelude::{Colour, Permissions, ShardId, User};
+use crate::{Context, Error};
+
+
+#[poise::command(slash_command, description_localized("en", "Shows information about the bot."))]
+pub async fn about(context: Context<'_>) -> Result<(), Error> {
+    let current_user = context.discord()
         .cache
-        .current_user()
-        .await
-        .invite_url(
-            &context,
-            Permissions::READ_MESSAGES
-                | Permissions::SEND_MESSAGES
-                | Permissions::EMBED_LINKS
-                | Permissions::ADD_REACTIONS
-                | Permissions::READ_MESSAGE_HISTORY
-                | Permissions::USE_EXTERNAL_EMOJIS
-                | Permissions::CONNECT
-                | Permissions::USE_VAD
-                | Permissions::CHANGE_NICKNAME,
-        )
+        .current_user().clone();
+    let face = current_user.face();
+    let invite_url = current_user.invite_url(&context.discord(), Permissions::SEND_MESSAGES
+        | Permissions::EMBED_LINKS
+        | Permissions::ADD_REACTIONS
+        | Permissions::USE_EXTERNAL_EMOJIS
+        | Permissions::CHANGE_NICKNAME)
         .await?;
-    msg.channel_id
-        .send_message(&context, |m| {
+    context
+        .send( |m| {
             m.embed(|e| {
                 e.url(&invite_url)
                     .colour(Colour::new(0x00D2_5148))
@@ -60,60 +47,29 @@ async fn about(context: &Context, msg: &Message) -> CommandResult {
                     })
                     .field("Authors", &crate::AUTHORS, false)
                     .field("Source Code", "https://github.com/flat/lupusregina-", false)
-            })
+            }).ephemeral(true)
         })
         .await?;
     Ok(())
 }
 
-pub async fn avatar(context: &Context, interaction: Interaction) -> CommandResult {
-    if let Some(interactionData) = interaction.data {
-
-    } else {
-        interaction.create_interaction_respon
-    }
-    Ok(())
-}
-
-#[command]
-#[description = "Shows various information about a user"]
-#[only_in("guilds")]
-async fn userinfo(context: &Context, msg: &Message, args: Args) -> CommandResult {
-    let guild_id = msg.guild_id.ok_or("Failed to get GuildID from Message.")?;
-    let member = if msg.mentions.is_empty() {
-        if args.is_empty() {
-            msg.member(&context).await?
-        } else {
-            (*(guild_id
-                .to_guild_cached(&context)
-                .await
-                .ok_or("Failed to get Guild from GuildId")?
-                .members_starting_with(args.rest(), false, true)
-                .await
-                .first()
-                .ok_or("Could not find member")?))
-            .0
-            .clone()
-        }
-    } else {
+#[poise::command(context_menu_command = "User information", guild_only)]
+pub async fn userinfo(context: Context<'_>, #[description = "The user to show information about."] user: User) -> Result<(), Error> {
+    let guild_id = context.guild_id().ok_or("Failed to get GuildID from Message.")?;
+    let member =
         guild_id
             .member(
-                context,
-                msg.mentions
-                    .first()
-                    .ok_or("Failed to get user mentioned.")?,
+                context.discord(),
+                user.id
             )
-            .await?
-    };
+            .await?;
 
-    let user = member.user;
     let nickname = member.nick.map_or("None".to_owned(), |nick| nick);
     let member_joined = member
         .joined_at
         .map_or("Unavailable".to_owned(), |d| format!("{}", d));
 
-    msg.channel_id
-        .send_message(&context, move |m| {
+    context.send(move |m| {
             m.embed(move |e| {
                 e.author(|a| a.name(&user.name).icon_url(&user.face()))
                     .field("Discriminator", format!("#{:04}", user.discriminator), true)
@@ -121,24 +77,20 @@ async fn userinfo(context: &Context, msg: &Message, args: Args) -> CommandResult
                     .field("Nickname", nickname, true)
                     .field("User Created", user.created_at(), true)
                     .field("Joined Server", member_joined, true)
-            })
+            }).ephemeral(true)
         })
         .await?;
     Ok(())
 }
 
-#[command]
-#[description = "Shows various information about the guild."]
-#[only_in("guilds")]
-async fn guildinfo(context: &Context, msg: &Message) -> CommandResult {
-    let guild_id = msg.guild_id.ok_or("Failed to get GuildID from Message.")?;
+#[poise::command(slash_command, guild_only, description_localized("en", "Shows various information about the guild."))]
+pub async fn guildinfo(context: Context<'_>) -> Result<(), Error> {
+    let guild_id = context.guild_id().ok_or("Failed to get GuildID from Message.")?;
     let guild = guild_id
-        .to_guild_cached(&context)
-        .await
+        .to_guild_cached(&context.discord())
         .ok_or("Failed to get Guild from GuildID")?;
 
-    msg.channel_id
-        .send_message(&context, move |m| {
+    context.send(move |m| {
             m.embed(move |e| {
                 e.author(|a| {
                     a.name(&guild.name);
@@ -160,34 +112,28 @@ async fn guildinfo(context: &Context, msg: &Message) -> CommandResult {
                     e.image(splash);
                 }
                 e.footer(|f| f.text(format!("Guild created at {}", guild_id.created_at())))
-            })
+            }).ephemeral(true)
         })
         .await?;
     Ok(())
 }
 
-#[command]
-#[description = "Responds with the current latency to Discord."]
-async fn ping(context: &Context, msg: &Message) -> CommandResult {
+#[poise::command(slash_command, description_localized("en", "Responds with the current latency to Discord."))]
+pub async fn ping(context: Context<'_>) -> Result<(), Error> {
     let now = Utc::now();
-    let mut msg = msg.channel_id.say(&context, "Ping!").await?;
+    let msg = context.say("Ping!").await?;
     let finish = Utc::now();
     let lping = ((finish.timestamp() - now.timestamp()) * 1000)
         + (i64::from(finish.timestamp_subsec_millis()) - i64::from(now.timestamp_subsec_millis()));
     let shard_manager = context
-        .data
-        .read()
-        .await
-        .get::<ClientShardManager>()
-        .ok_or("Failed to get ClientShardManager.")?
-        .clone();
+        .data().shard_manager.clone();
     let shard_latency = shard_manager
         .lock()
         .await
         .runners
         .lock()
         .await
-        .get(&ShardId(context.shard_id))
+        .get(&ShardId(context.discord().shard_id))
         .ok_or("Failed to get Shard.")?
         .latency
         .ok_or("Failed to get latency from shard.")?

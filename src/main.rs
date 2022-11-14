@@ -14,85 +14,45 @@
  *    limitations under the License.
  */
 
-use std::collections::{HashMap, HashSet};
 use std::env;
 use std::sync::Arc;
+use std::time::Duration;
 
 use chrono::Utc;
 use dotenv::dotenv;
-use serenity::async_trait;
-use serenity::framework::standard::{
-    help_commands,
-    macros::{group, help, hook},
-    Args, CommandGroup, CommandResult, DispatchError, HelpOptions, StandardFramework,
-};
-use serenity::model::event::ResumedEvent;
-use serenity::model::gateway::Ready;
-use serenity::model::id::UserId;
-use serenity::model::prelude::{GuildId, Message};
-use serenity::prelude::*;
+use poise::{Event, serenity_prelude as serenity};
+use tokio::sync::Mutex;
+use tracing::info;
 
-use serenity::client::bridge::gateway::GatewayIntents;
-use serenity::framework::standard::DispatchError::Ratelimited;
-use serenity::http::Http;
-use serenity::model::channel::MessageType::ApplicationCommand;
-use serenity::model::interactions::Interaction;
+use util::Data;
 
-use tracing::{error, info};
-
+use crate::util::get_configuration;
 
 pub mod commands;
 pub mod util;
 
-struct Handler;
+type Error = Box<dyn std::error::Error + Send + Sync>;
+type Context<'a> = poise::Context<'a, Data, Error>;
 
-#[async_trait]
-impl EventHandler for Handler {
-    async fn cache_ready(&self, _ctx: Context, guilds: Vec<GuildId>) {
-        info!("Connected to {} guilds.", guilds.len());
-    }
-    async fn ready(&self, ctx: Context, ready: Ready) {
-        if let Some(shard) = ready.shard {
-            info!(
-                "Connected as {} on shard {}/{}",
-                ready.user.name,
-                shard[0] + 1,
-                shard[1]
-            );
-        } else {
-            info!("Connected as {}", ready.user.name);
+#[poise::command(prefix_command, hide_in_help, owners_only)]
+async fn register(ctx: Context<'_>) -> Result<(), Error> {
+    poise::builtins::register_application_commands_buttons(ctx).await?;
+    Ok(())
+}
+
+async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
+    // This is our custom error handler
+    // They are many errors that can occur, so we only handle the ones we want to customize
+    // and forward the rest to the default handler
+    match error {
+        poise::FrameworkError::Setup { error, .. } => panic!("Failed to start bot: {:?}", error),
+        poise::FrameworkError::Command { error, ctx } => {
+            println!("Error in command `{}`: {:?}", ctx.command().name, error,);
         }
-
-        let mut data = ctx.data.write();
-        match data.await.get_mut::<util::Uptime>() {
-            Some(uptime) => {
-                uptime.entry(String::from("boot")).or_insert_with(Utc::now);
+        error => {
+            if let Err(e) = poise::builtins::on_error(error).await {
+                println!("Error while handling error: {}", e)
             }
-            None => error!("Unable to insert boot time into client data."),
-        };
-        let slash_commands = ApplicationCommand::set_global_application_commands(&ctx.http, |commands| {
-            commands.create_application_command(|command| {
-                command.name("avatar").description("Shows the avatar for the user or specified user.").create_option(|option| {
-                    option.name("user").description("The target user").kind(ApplicationCommandType::User).required(false)
-                })
-            })
-        }).await;
-
-        info!("The following global slash commands are registered: {:#?}", slash_commands);
-    }
-
-    async fn resume(&self, _: Context, _: ResumedEvent) {
-        info!("Resumed");
-    }
-
-    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        info!("Received command {:?} from user {:?}", interaction.data.name.as_str(), interaction.user);
-        let result = match command.data.name.as_str() {
-            "avatar" => crate::commands::general::avatar(&ctx, interaction).await
-        };
-        match result {
-            Ok(_) => (),
-            Err(why) => error!("Command failed: {:?}", why)
         }
     }
 }
@@ -102,41 +62,89 @@ const BOT_NAME: &str = env!("CARGO_PKG_NAME");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), poise::serenity_prelude::Error> {
     dotenv().expect("Failed to load .env file!");
+
     tracing_subscriber::fmt::init();
 
-    let token = env::var("BOT_TOKEN")?;
+    let options = poise::FrameworkOptions {
+        commands: vec![
+            register(),
+            commands::general::ping(),
+            commands::general::about(),
+            commands::general::guildinfo(),
+            commands::general::userinfo(),
+            commands::owner::info(),
+            commands::owner::nickname(),
+            commands::owner::presence(),
+            commands::owner::reload(),
+            commands::owner::rename(),
+            commands::owner::setavatar(),
+            commands::weeb::anime(),
+            commands::weeb::manga(),
+            commands::weeb::vtuber(),
+            commands::fun::bloodborne(),
+            commands::fun::darksouls(),
+            commands::fun::darksouls3(),
+            commands::fun::eightball(),
+            commands::fun::ddate()
 
-    let http = Http::new_with_token(&token);
-
-    match http.get_current_application_info().await {
-        Ok(info) => {
-            let mut owners = HashSet::new();
-            owners.insert(info.owner.id);
-        }
-        Err(why) => panic!("Could not access application info: {:?}", why),
+        ],
+        prefix_options: poise::PrefixFrameworkOptions {
+            prefix: Some("~".into()),
+            edit_tracker: Some(poise::EditTracker::for_timespan(Duration::from_secs(3600))),
+            ..Default::default()
+        },
+        /// The global error handler for all error cases that may occur
+        on_error: |error| Box::pin(on_error(error)),
+        /// This code is run before every command
+        pre_command: |ctx| {
+            Box::pin(async move {
+                println!("Executing command {}...", ctx.command().qualified_name);
+            })
+        },
+        /// This code is run after a command if it was successful (returned Ok)
+        post_command: |ctx| {
+            Box::pin(async move {
+                println!("Executed command {}!", ctx.command().qualified_name);
+            })
+        },
+        listener: |_ctx, event, _framework, _data| {
+            Box::pin(async move {
+                match event {
+                    Event::Ready { data_about_bot } => {
+                        let mut shards = String::new();
+                        if let Some(shard) = data_about_bot.shard {
+                            shards = format!(" on shard {}/{}", shard[0], shard[1]);
+                        }
+                        info!("Connected as {:?}{}", data_about_bot.user, shards)
+                    },
+                    _ => {}
+                }
+                Ok(())
+            })
+        },
+        ..Default::default()
     };
 
-    let mut client = Client::builder(&token)
-        .event_handler(Handler)
-        .intents(
-            GatewayIntents::GUILD_MESSAGES
-                | GatewayIntents::DIRECT_MESSAGES
-                | GatewayIntents::GUILD_MESSAGES
-                | GatewayIntents::GUILDS
-                | GatewayIntents::GUILD_BANS
-                | GatewayIntents::GUILD_PRESENCES
-                | GatewayIntents::GUILD_VOICE_STATES,
+    poise::Framework::builder()
+        .token(
+            env::var("BOT_TOKEN")
+                .expect("Missing `BOT_TOKEN` env var."),
         )
+        .user_data_setup(move |_ctx, _ready, framework| {
+            Box::pin(async move {
+                Ok(Data {
+                    config: Mutex::new(get_configuration()?),
+                    uptime: Arc::new(Utc::now()),
+                    shard_manager: framework.shard_manager().clone(),
+                })
+            })
+        })
+        .options(options)
+        .intents(
+            serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::MESSAGE_CONTENT,
+        )
+        .run()
         .await
-        .expect("Error creating client!");
-
-    {
-        let mut data = client.data.write().await;
-        data.insert::<util::ClientShardManager>(Arc::clone(&client.shard_manager));
-        data.insert::<util::Uptime>(HashMap::default());
-    }
-
-    client.start_autosharded().await.map_err(|e| e.into())
 }

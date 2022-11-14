@@ -18,15 +18,13 @@ use chrono::Utc;
 use graphql_client::{GraphQLQuery, Response};
 use html2text::from_read_with_decorator;
 use serde::Deserialize;
-use serenity::framework::standard::{macros::command, Args, CommandResult};
-use serenity::model::channel::Message;
-use serenity::prelude::Context;
-use serenity::utils::Colour;
 
 use reqwest::Client as ReqwestClient;
 use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use poise::serenity_prelude::Colour;
+use crate::{Context, Error};
 
 use crate::util::DiscordMarkdownDecorator;
 
@@ -52,16 +50,11 @@ const ANILIST_MANGA_PATH: &str = "https://anilist.co/manga/";
 const ANILIST_ANIME_PATH: &str = "https://anilist.co/anime/";
 const VIRTUALYOUTUBER_WIKI_API: &str = "https://virtualyoutuber.fandom.com/api.php";
 
-#[command]
-#[description = "Shows information about an anime from Anilist."]
-#[usage = "<Anime Title>"]
-#[example = "Tate no Yuusha no Nariagari"]
-#[min_args(1)]
-#[bucket = "anilist"]
-async fn anime(context: &Context, msg: &Message, args: Args) -> CommandResult {
-    let query = args.rest();
+
+#[poise::command(slash_command, description_localized("en", "Shows information about an Anime from Anilist"), global_cooldown = 1)]
+pub async fn anime(context: Context<'_>, anime_title: String) -> Result<(), Error> {
     let anime = anime_query(anime_query::Variables {
-        title: Some(query.to_string()),
+        title: Some(anime_title),
     })
     .await?;
     let anime = anime
@@ -105,8 +98,8 @@ async fn anime(context: &Context, msg: &Message, args: Args) -> CommandResult {
         },
     );
 
-    msg.channel_id
-        .send_message(&context, |m| {
+    context
+        .send(|m| {
             m.embed(|mut e| {
                 e = e
                     .color(Colour::BLUE)
@@ -154,7 +147,7 @@ async fn anime(context: &Context, msg: &Message, args: Args) -> CommandResult {
                     e = e.field("End Date", end_date, true)
                 }
                 e = e
-                    .timestamp(&Utc::now())
+                    .timestamp(Utc::now())
                     .footer(|f| f.text("Data provided by Anilist.co").icon_url(ANILIST_ICON));
                 e
             })
@@ -163,16 +156,11 @@ async fn anime(context: &Context, msg: &Message, args: Args) -> CommandResult {
     Ok(())
 }
 
-#[command]
-#[description = "Shows information about a manga from Anilist."]
-#[usage = "<Manga Title>"]
-#[example = "Tate no Yuusha no Nariagari"]
-#[bucket = "anilist"]
-#[min_args(1)]
-async fn manga(context: &Context, msg: &Message, args: Args) -> CommandResult {
-    let query = args.rest();
+
+#[poise::command(slash_command, description_localized("en", "Shows information about a manga from Anilist"), global_cooldown = 1)]
+pub async fn manga(context: Context<'_>, manga_title: String) -> Result<(), Error> {
     let manga = manga_query(manga_query::Variables {
-        title: Some(query.to_string()),
+        title: Some(manga_title),
     })
     .await?;
     let manga = manga
@@ -215,8 +203,8 @@ async fn manga(context: &Context, msg: &Message, args: Args) -> CommandResult {
         },
     );
 
-    msg.channel_id
-        .send_message(&context, |m| {
+    context
+        .send(|m| {
             m.embed(|mut e| {
                 e = e
                     .color(Colour::BLUE)
@@ -261,7 +249,7 @@ async fn manga(context: &Context, msg: &Message, args: Args) -> CommandResult {
                     e = e.field("End Date", end_date, true)
                 }
                 e = e
-                    .timestamp(&Utc::now())
+                    .timestamp(Utc::now())
                     .footer(|f| f.text("Data provided by Anilist.co").icon_url(ANILIST_ICON));
                 e
             })
@@ -327,14 +315,9 @@ struct ArticleImage {
     image: HashMap<String, String>,
 }
 
-#[command]
-#[description = "Shows information about a Virtual YouTuber."]
-#[usage = "<Virtual YouTuber Name>"]
-#[example = "Natsuiro Matsuri"]
-#[min_args(1)]
-async fn vtuber(context: &Context, msg: &Message, args: Args) -> CommandResult {
-    let query = args.rest();
-    let search = search_vtuber_wiki(query.into()).await?;
+#[poise::command(slash_command, description_localized("en", "Shows information about a Virtual Youtuber"), global_cooldown = 1)]
+pub async fn vtuber(context: Context<'_>, name: String) -> Result<(), Error> {
+    let search = search_vtuber_wiki(name).await?;
     let title = search.1[0].clone();
     let url = search.3[0].clone();
     let text: String = get_vtuber_article_text(title.clone())
@@ -357,8 +340,8 @@ async fn vtuber(context: &Context, msg: &Message, args: Args) -> CommandResult {
         .find("##")
         .ok_or("Unable to find end of description")?;
     let desc = &parsed_text[..end];
-    msg.channel_id
-        .send_message(context, |m| {
+    context
+        .send(|m| {
             m.embed(|e| {
                 e.title(&title).url(url).description(desc);
                 if let Some(thumbnail) = image.image.get("imageserving") {

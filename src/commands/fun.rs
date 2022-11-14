@@ -16,15 +16,13 @@
 
 use core::fmt;
 
-use chrono::{Date, Datelike, Local};
+use chrono::{Datelike, Local, NaiveDate};
 use rand::prelude::*;
-use serenity::client::Context;
-use serenity::framework::standard::{macros::command, Args, CommandResult};
-use serenity::model::channel::Message;
-use serenity::utils::Colour;
 
 use lazy_static::lazy_static;
 use std::cmp::Ordering;
+use poise::serenity_prelude::Colour;
+use crate::{Context, Error};
 
 lazy_static! {
     static ref DS1FILLERS: Vec<&'static str> =
@@ -72,8 +70,8 @@ struct Dday {
     tibs_day: bool,
 }
 
-impl From<Date<Local>> for Dday {
-    fn from(date: Date<Local>) -> Self {
+impl From<NaiveDate> for Dday {
+    fn from(date: NaiveDate) -> Self {
         let year = date.year() + 1166;
         let mut day_of_year = date.ordinal0();
         let mut tibs_day = false;
@@ -116,11 +114,8 @@ impl fmt::Display for Dday {
     }
 }
 
-#[command]
-#[description = "Ask the magic eight ball your question and receive your fortune."]
-#[min_args(1)]
-#[aliases("8ball")]
-async fn eightball(context: &Context, msg: &Message, args: Args) -> CommandResult {
+#[poise::command(slash_command, description_localized("en", "Ask the magic eight ball your question and receive your fortune."), aliases("8ball"))]
+pub async fn eightball(context: Context<'_>, question: String) -> Result<(), Error> {
     let answers = vec![
         "It is certain.",
         "It is decidedly so.",
@@ -146,19 +141,10 @@ async fn eightball(context: &Context, msg: &Message, args: Args) -> CommandResul
     let mut rng = rand::rngs::StdRng::from_entropy();
     let num = rng.gen_range(0..=19);
     let choice = answers[num];
-    let nick = {
-        if let Some(guild_id) = msg.guild_id {
-            context
-                .cache
-                .member(guild_id, msg.author.id)
-                .await
-                .and_then(|member| member.nick)
-        } else {
-            None
-        }
-    };
-    msg.channel_id
-        .send_message(&context, |m| {
+    let nick =  context.author_member().await.and_then(|m| m.nick.clone());
+
+    context
+        .send( |m| {
             m.embed(|e| {
                 e.colour({
                     if num <= 9 {
@@ -169,16 +155,12 @@ async fn eightball(context: &Context, msg: &Message, args: Args) -> CommandResul
                         Colour::new(0xDC_35_45)
                     }
                 })
-                .description(args.rest())
+                .description(question)
                 .author(|mut a| {
-                    if msg.is_private() {
-                        a = a.name(&msg.author.name);
-                    } else if let Some(n) = nick {
-                        a = a.name(n);
-                    } else {
-                        a = a.name(&msg.author.name);
-                    }
-                    a = a.icon_url(&msg.author.face());
+                    if let Some(nick) = nick {
+                        a.name(nick);
+                    } else { a.name(context.author().name.clone()); }
+                    a = a.icon_url(context.author().face());
                     a
                 })
                 .field("🎱Eightball🎱", choice, false)
@@ -188,22 +170,19 @@ async fn eightball(context: &Context, msg: &Message, args: Args) -> CommandResul
     Ok(())
 }
 
-#[command]
-#[description = "Display a randomly generated Dark Souls message."]
-#[aliases("ds")]
-async fn darksouls(context: &Context, msg: &Message, _args: Args) -> CommandResult {
+#[poise::command(slash_command, description_localized("en", "Display a randomly generated Dark Souls message."), aliases("ds"))]
+pub async fn darksouls(context: Context<'_>) -> Result<(), Error> {
     let mut rng = rand::rngs::StdRng::from_entropy();
     let template = DS1TEMPLATES[rng.gen_range(0..=DS1TEMPLATES.len())];
     let filler = DS1FILLERS[rng.gen_range(0..=DS1FILLERS.len())];
     let message = template.replace("{}", filler);
-    msg.channel_id.say(&context, message).await?;
+    context.say( message).await?;
     Ok(())
 }
 
-#[command]
-#[description = "Display a randomly generated Dark Souls 3 message."]
-#[aliases("ds3")]
-async fn darksouls3(context: &Context, msg: &Message, _args: Args) -> CommandResult {
+
+#[poise::command(slash_command, description_localized("en", "Display a randomly generated Dark Souls 3 message."), aliases("ds3"))]
+pub async fn darksouls3(context: Context<'_>) -> Result<(), Error> {
     let mut rng = rand::rngs::StdRng::from_entropy();
     let has_conjunction: u8 = rng.gen_range(0..=2);
     if has_conjunction == 1 {
@@ -230,21 +209,19 @@ async fn darksouls3(context: &Context, msg: &Message, _args: Args) -> CommandRes
                 );
             }
         }
-        msg.channel_id.say(&context, message).await?;
+        context.say( message).await?;
         Ok(())
     } else {
         let template = DS3TEMPLATES[rng.gen_range(0..=DS3TEMPLATES.len())];
         let filler = DS3FILLERS[rng.gen_range(0..=DS3FILLERS.len())];
         let message = template.replace("{}", filler);
-        msg.channel_id.say(&context, message).await?;
+        context.say( message).await?;
         Ok(())
     }
 }
 
-#[command]
-#[description = "Display a randomly generated Bloodborne note."]
-#[aliases("bb")]
-async fn bloodborne(context: &Context, msg: &Message, _args: Args) -> CommandResult {
+#[poise::command(slash_command, description_localized("en", "Display a randomly generated Bloodborne note."), aliases("bb"))]
+pub async fn bloodborne(context: Context<'_>) -> Result<(), Error> {
     let mut rng = rand::rngs::StdRng::from_entropy();
     let has_conjunction: u8 = rng.gen_range(0..=2);
     if has_conjunction == 1 {
@@ -271,24 +248,23 @@ async fn bloodborne(context: &Context, msg: &Message, _args: Args) -> CommandRes
                 );
             }
         }
-        msg.channel_id.say(&context, message).await?;
+        context.say( message).await?;
         Ok(())
     } else {
         let template = BBTEMPLATES[rng.gen_range(0..=BBTEMPLATES.len())];
         let filler = BBFILLERS[rng.gen_range(0..=BBFILLERS.len())];
         let message = template.replace("{}", filler);
-        msg.channel_id.say(&context, message).await?;
+        context.say( message).await?;
         Ok(())
     }
 }
 
-#[command]
-#[description = "Display the current date of the Discordian/Erisian Calendar"]
-#[aliases("dd")]
-async fn ddate(context: &Context, msg: &Message, _args: Args) -> CommandResult {
-    let today = Local::today();
-    let message = Dday::from(today);
-    msg.channel_id.say(&context, message).await?;
+
+#[poise::command(slash_command, description_localized("en", "Display the current date of the Discordian/Erisian Calendar"), aliases("dd"))]
+pub async fn ddate(context: Context<'_>) -> Result<(), Error> {
+    let today = Local::now();
+    let message = Dday::from(today.date_naive());
+    context.say( format!("{}", message)).await?;
     Ok(())
 }
 
