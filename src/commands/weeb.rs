@@ -51,7 +51,7 @@ const ANILIST_ANIME_PATH: &str = "https://anilist.co/anime/";
 const VIRTUALYOUTUBER_WIKI_API: &str = "https://virtualyoutuber.fandom.com/api.php";
 
 
-#[poise::command(slash_command, description_localized("en", "Shows information about an Anime from Anilist"), global_cooldown = 1)]
+#[poise::command(slash_command, description_localized("en-US", "Shows information about an Anime from Anilist"), global_cooldown = 1)]
 pub async fn anime(context: Context<'_>, anime_title: String) -> Result<(), Error> {
     let anime = anime_query(anime_query::Variables {
         title: Some(anime_title),
@@ -157,7 +157,7 @@ pub async fn anime(context: Context<'_>, anime_title: String) -> Result<(), Erro
 }
 
 
-#[poise::command(slash_command, description_localized("en", "Shows information about a manga from Anilist"), global_cooldown = 1)]
+#[poise::command(slash_command, description_localized("en-US", "Shows information about a manga from Anilist"), global_cooldown = 1)]
 pub async fn manga(context: Context<'_>, manga_title: String) -> Result<(), Error> {
     let manga = manga_query(manga_query::Variables {
         title: Some(manga_title),
@@ -289,12 +289,15 @@ struct WikiOpenSearchResults(String, Vec<String>, Vec<String>, Vec<String>);
 
 #[derive(Deserialize, Clone)]
 struct WikiQueryResults {
+    #[allow(dead_code)]
     batchcomplete: String,
+    #[allow(dead_code)]
     query: Query,
 }
 
 #[derive(Deserialize, Clone)]
 struct Query {
+    #[allow(dead_code)]
     pages: Vec<Map<String, Value>>,
 }
 
@@ -305,7 +308,9 @@ struct ParseDetails {
 
 #[derive(Deserialize, Clone)]
 struct Parse {
+    #[allow(dead_code)]
     title: String,
+    #[allow(dead_code)]
     pageid: u64,
     text: HashMap<String, String>,
 }
@@ -315,7 +320,7 @@ struct ArticleImage {
     image: HashMap<String, String>,
 }
 
-#[poise::command(slash_command, description_localized("en", "Shows information about a Virtual Youtuber"), global_cooldown = 1)]
+#[poise::command(slash_command, description_localized("en-US", "Shows information about a Virtual Youtuber"), global_cooldown = 1)]
 pub async fn vtuber(context: Context<'_>, name: String) -> Result<(), Error> {
     let search = search_vtuber_wiki(name).await?;
     let title = search.1[0].clone();

@@ -20,7 +20,7 @@ use poise::serenity_prelude::{Colour, Permissions, ShardId, User};
 use crate::{Context, Error};
 
 
-#[poise::command(slash_command, description_localized("en", "Shows information about the bot."))]
+#[poise::command(slash_command, description_localized("en-US", "Shows information about the bot."))]
 pub async fn about(context: Context<'_>) -> Result<(), Error> {
     let current_user = context.discord()
         .cache
@@ -83,7 +83,7 @@ pub async fn userinfo(context: Context<'_>, #[description = "The user to show in
     Ok(())
 }
 
-#[poise::command(slash_command, guild_only, description_localized("en", "Shows various information about the guild."))]
+#[poise::command(slash_command, guild_only, description_localized("en-US", "Shows various information about the guild."))]
 pub async fn guildinfo(context: Context<'_>) -> Result<(), Error> {
     let guild_id = context.guild_id().ok_or("Failed to get GuildID from Message.")?;
     let guild = guild_id
@@ -118,7 +118,7 @@ pub async fn guildinfo(context: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-#[poise::command(slash_command, description_localized("en", "Responds with the current latency to Discord."))]
+#[poise::command(slash_command, description_localized("en-US", "Responds with the current latency to Discord."))]
 pub async fn ping(context: Context<'_>) -> Result<(), Error> {
     let now = Utc::now();
     let msg = context.say("Ping!").await?;

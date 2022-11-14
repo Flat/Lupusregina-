@@ -54,6 +54,7 @@ pub fn get_configuration() -> Result<Ini> {
 
 #[derive(Clone)]
 pub struct DiscordMarkdownDecorator {
+    #[allow(dead_code)]
     links: Vec<String>,
 }
 

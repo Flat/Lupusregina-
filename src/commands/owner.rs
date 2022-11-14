@@ -22,7 +22,7 @@ use procfs::process::Process;
 
 use crate::{Context, Error, serenity, util};
 
-#[poise::command(slash_command, owners_only, description_localized("en", "Shows information about the bot"))]
+#[poise::command(slash_command, owners_only, description_localized("en-US", "Shows information about the bot"))]
 pub async fn info(context: Context<'_>) -> Result<(), Error> {
     let boot_time = context.data().uptime.clone();
     let now = Utc::now();
@@ -95,7 +95,7 @@ pub async fn info(context: Context<'_>) -> Result<(), Error> {
                     })
                     .title("Running Information")
                     .description(desc)
-            })
+            }).ephemeral(true)
         })
         .await?;
     Ok(())
@@ -112,7 +112,7 @@ pub async fn reload(context: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-#[poise::command(slash_command, owners_only, description_localized("en", "Changes the bot's username. YOU MAY LOSE THE DISCRIMINATOR UPON CHANGING BACK!"))]
+#[poise::command(slash_command, owners_only, description_localized("en-US", "Changes the bot's username. YOU MAY LOSE THE DISCRIMINATOR UPON CHANGING BACK!"))]
 pub async fn rename(context: Context<'_>, #[description = "New username for the bot"] username: String) -> Result<(), Error> {
     context.discord()
         .cache
@@ -122,7 +122,7 @@ pub async fn rename(context: Context<'_>, #[description = "New username for the 
     Ok(())
 }
 
-#[poise::command(slash_command, owners_only, guild_only, description_localized("en", "Changes the bot's nickname"))]
+#[poise::command(slash_command, owners_only, guild_only, description_localized("en-US", "Changes the bot's nickname"))]
 pub async fn nickname(context: Context<'_>, #[description = "New username for the bot"] nickname: Option<String>) -> Result<(), Error> {
         if let Some(guild_id) = context.guild_id() {
             context.discord().http.edit_nickname(u64::from(guild_id), nickname.as_deref()).await?

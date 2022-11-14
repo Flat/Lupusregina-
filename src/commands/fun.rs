@@ -114,7 +114,7 @@ impl fmt::Display for Dday {
     }
 }
 
-#[poise::command(slash_command, description_localized("en", "Ask the magic eight ball your question and receive your fortune."), aliases("8ball"))]
+#[poise::command(slash_command, description_localized("en-US", "Ask the magic eight ball your question and receive your fortune."), aliases("8ball"))]
 pub async fn eightball(context: Context<'_>, question: String) -> Result<(), Error> {
     let answers = vec![
         "It is certain.",
@@ -170,7 +170,7 @@ pub async fn eightball(context: Context<'_>, question: String) -> Result<(), Err
     Ok(())
 }
 
-#[poise::command(slash_command, description_localized("en", "Display a randomly generated Dark Souls message."), aliases("ds"))]
+#[poise::command(slash_command, description_localized("en-US", "Display a randomly generated Dark Souls message."), aliases("ds"))]
 pub async fn darksouls(context: Context<'_>) -> Result<(), Error> {
     let mut rng = rand::rngs::StdRng::from_entropy();
     let template = DS1TEMPLATES[rng.gen_range(0..=DS1TEMPLATES.len())];
@@ -181,7 +181,7 @@ pub async fn darksouls(context: Context<'_>) -> Result<(), Error> {
 }
 
 
-#[poise::command(slash_command, description_localized("en", "Display a randomly generated Dark Souls 3 message."), aliases("ds3"))]
+#[poise::command(slash_command, description_localized("en-US", "Display a randomly generated Dark Souls 3 message."), aliases("ds3"))]
 pub async fn darksouls3(context: Context<'_>) -> Result<(), Error> {
     let mut rng = rand::rngs::StdRng::from_entropy();
     let has_conjunction: u8 = rng.gen_range(0..=2);
@@ -220,7 +220,7 @@ pub async fn darksouls3(context: Context<'_>) -> Result<(), Error> {
     }
 }
 
-#[poise::command(slash_command, description_localized("en", "Display a randomly generated Bloodborne note."), aliases("bb"))]
+#[poise::command(slash_command, description_localized("en-US", "Display a randomly generated Bloodborne note."), aliases("bb"))]
 pub async fn bloodborne(context: Context<'_>) -> Result<(), Error> {
     let mut rng = rand::rngs::StdRng::from_entropy();
     let has_conjunction: u8 = rng.gen_range(0..=2);
@@ -260,7 +260,7 @@ pub async fn bloodborne(context: Context<'_>) -> Result<(), Error> {
 }
 
 
-#[poise::command(slash_command, description_localized("en", "Display the current date of the Discordian/Erisian Calendar"), aliases("dd"))]
+#[poise::command(slash_command, description_localized("en-US", "Display the current date of the Discordian/Erisian Calendar"), aliases("dd"))]
 pub async fn ddate(context: Context<'_>) -> Result<(), Error> {
     let today = Local::now();
     let message = Dday::from(today.date_naive());

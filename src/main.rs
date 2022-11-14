@@ -22,7 +22,8 @@ use chrono::Utc;
 use dotenv::dotenv;
 use poise::{Event, serenity_prelude as serenity};
 use tokio::sync::Mutex;
-use tracing::info;
+use tracing::{error, info};
+use tracing::log::trace;
 
 use util::Data;
 
@@ -47,11 +48,11 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
     match error {
         poise::FrameworkError::Setup { error, .. } => panic!("Failed to start bot: {:?}", error),
         poise::FrameworkError::Command { error, ctx } => {
-            println!("Error in command `{}`: {:?}", ctx.command().name, error,);
+            error!("Error in command `{}`: {:?}", ctx.command().name, error,);
         }
         error => {
             if let Err(e) = poise::builtins::on_error(error).await {
-                println!("Error while handling error: {}", e)
+                error!("Error while handling error: {}", e)
             }
         }
     }
@@ -100,13 +101,13 @@ async fn main() -> Result<(), poise::serenity_prelude::Error> {
         /// This code is run before every command
         pre_command: |ctx| {
             Box::pin(async move {
-                println!("Executing command {}...", ctx.command().qualified_name);
+                trace!("Executing command {}...", ctx.command().qualified_name);
             })
         },
         /// This code is run after a command if it was successful (returned Ok)
         post_command: |ctx| {
             Box::pin(async move {
-                println!("Executed command {}!", ctx.command().qualified_name);
+                trace!("Executed command {}!", ctx.command().qualified_name);
             })
         },
         listener: |_ctx, event, _framework, _data| {
