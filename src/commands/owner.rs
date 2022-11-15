@@ -75,12 +75,12 @@ pub async fn info(context: Context<'_>) -> Result<(), Error> {
         if let Ok(ticks) = procfs::ticks_per_second() {
             if let Ok(kstats) = procfs::KernelStats::new() {
                 let cpu_usage = 100
-                    * (((process.stat.utime
-                        + process.stat.stime
-                        + process.stat.cutime as u64
-                        + process.stat.cstime as u64)
+                    * (((process.stat()?.utime
+                        + process.stat()?.stime
+                        + process.stat()?.cutime as u64
+                        + process.stat()?.cstime as u64)
                         / ticks as u64)
-                        / (kstats.btime - (process.stat.starttime / ticks as u64)));
+                        / (kstats.btime - (process.stat()?.starttime / ticks as u64)));
                 let _ = write!(desc, "\n**CPU Usage**: `{}%`", cpu_usage);
             }
         }
