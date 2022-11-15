@@ -123,11 +123,27 @@ impl TextDecorator for DiscordMarkdownDecorator {
         (title.to_string(), ())
     }
 
-    fn finalise(self) -> Vec<TaggedLine<()>> {
-        Vec::new()
+    fn header_prefix(&mut self, _level: usize) -> String {
+        String::from("**")
+    }
+
+    fn quote_prefix(&mut self) -> String {
+        String::from("`")
+    }
+
+    fn unordered_item_prefix(&mut self) -> String {
+        String::from("* ")
+    }
+
+    fn ordered_item_prefix(&mut self, i: i64) -> String {
+        format!("{}. ", i)
     }
 
     fn make_subblock_decorator(&self) -> Self {
         DiscordMarkdownDecorator::new()
+    }
+
+    fn finalise(self) -> Vec<TaggedLine<()>> {
+        Vec::new()
     }
 }
